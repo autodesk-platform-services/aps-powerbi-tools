@@ -95,7 +95,7 @@ DesignPropsConnector.Publish = [
     Beta = true,
     Category = "Other",
     ButtonText = {Extension.LoadString("ButtonTitle"), Extension.LoadString("ButtonHelp")},
-    LearnMoreUrl = "https://github.com/petrbroz/endymion-next",
+    LearnMoreUrl = "https://github.com/autodesk-platform-services/aps-powerbi-tools",
     SourceImage = DesignPropsConnector.Icons,
     SourceTypeImage = DesignPropsConnector.Icons
 ];

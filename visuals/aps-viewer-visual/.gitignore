@@ -1,0 +1,9 @@
+node_modules
+dist
+.tmp
+.env
+*.log
+webpack.statistics.dev.html
+webpack.statistics.prod.html
+.DS_Store
+Thumbs.db

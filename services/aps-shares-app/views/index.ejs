@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Autodesk Platform Services: Shares App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar bg-body-tertiary">
+        <div class="container-fluid">
+            <a href="/" class="navbar-brand">
+                <img src="https://cdn.autodesk.io/logo/black/stacked.png" alt="Autodesk Platform Services Logo" height="24" class="d-inline-block align-text-top me-2">
+                Shares App
+            </a>
+            <form class="d-flex" role="search">
+                <% if (user) { %>
+                    <a href="/auth/logout" class="btn btn-outline-success">Logout (<%= user.name %>)</a>
+                <% } else { %>
+                    <a href="/auth/login" class="btn btn-outline-success">Login</a>
+                <% } %>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <% if (user) { %>
+            <div class="d-flex justify-content-end">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#new-share-modal">
+                    New Share
+                </button>
+            </div>
+        <% } %>
+
+        <% if (shares) { %>
+            <h1>Shares</h1>
+            <table class="table table-sm table-hover align-middle mt-4">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Created</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (const share of shares) { %>
+                        <tr>
+                            <th scope="row"><%= share.id %></th>
+                            <td><%= share.created %></td>
+                            <td><%= share.description %></td>
+                            <td>
+                                <a href="/token?share=<%= share.code %>" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open in new tab">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                                <a href="#" onclick="copyToClipboard('<%= share.code %>')" class="btn btn-sm btn-outline-secondary" title="Copy to clipboard">
+                                    <i class="bi bi-clipboard"></i>
+                                </a>
+                                <a href="#" onclick="deleteShare('<%= share.id %>')" class="btn btn-sm btn-outline-danger" title="Remove">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+
+    <!-- New Share Modal -->
+    <div class="modal fade" id="new-share-modal" tabindex="-1" aria-labelledby="new-share-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="new-share-modal-label">New Share</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="new-share-form" action="/shares" method="post">
+                        <div class="mb-3">
+                            <label for="urn" class="col-form-label">URN:</label>
+                            <input type="text" class="form-control" id="urn" name="urn">
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="col-form-label">Description:</label>
+                            <textarea class="form-control" id="description" name="description"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary" form="new-share-form">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function copyToClipboard(code) {
+            try {
+                const link = new URL(`/token?share=${code}`, document.baseURI).href;
+                await navigator.clipboard.writeText(link);
+            } catch (err) {
+                alert('Could not copy link to clipboard. See console for more details.');
+                console.error(err);
+            }
+        }
+
+        async function deleteShare(id) {
+            if (confirm(`Do you want to remove share ${id}?`)) {
+                try {
+                    const response = await fetch(`/shares/${id}`, { method: 'delete' });
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    window.location.reload();
+                } catch (err) {
+                    alert('Could not remove share. See console for more details.');
+                    console.error(err);
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

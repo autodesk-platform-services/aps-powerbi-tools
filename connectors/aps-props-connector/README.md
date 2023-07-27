@@ -1,12 +1,15 @@
-# aps-props-connector
+# APS Design Properties Connector
 
-[Custom Power BI data connector](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility), used to load design properties from [Autodesk Platform Services](https://aps.autodesk.com).
+[Custom Power BI data connector](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility) used to import design properties from [Autodesk Platform Services](https://aps.autodesk.com) into Power BI reports.
+
+This data connector is designed for scenarios where the person authoring the Power BI report has access to existing designs in APS-based applications such as [Autodesk Construction Cloud](https://construction.autodesk.com). The author of the report will need to log in with their Autodesk credentials before using this data source, and specify the URN of the design whose properties should be imported (see the _FAQ_ section below for more details about URNs).
 
 ## Development
 
 ### Prerequisites
 
 - [APS app credentials](https://forge.autodesk.com/en/docs/oauth/v2/tutorials/create-app)
+  - [Provision access to ACC or BIM360](https://tutorials.autodesk.io/#provision-access-in-other-products)
 - [Power Query SDK](https://learn.microsoft.com/en-us/power-query/install-sdk)
 - [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (in case you want to build the connector manually)
 
@@ -27,7 +30,7 @@
 
 ![Set credential](./docs/set-credential.png)
 
-- Open the [DesignPropsConnector.query.pq](./DesignPropsConnector.query.pq) file, and add your own design URN (see the _FAQ_ section below for more details about _URN_ values) and region ("US" or "EMEA")
+- Open the [DesignPropsConnector.query.pq](./DesignPropsConnector.query.pq) file, and add your own design URN and region ("US" or "EMEA")
 - Run the data connector using  _Power Query SDK_, for example, by clicking the _Evaluate current file_ option in Visual Studio Code
 
 ### Publishing
@@ -36,11 +39,13 @@
 - Import the generated *.mez file from the _bin_ subfolder into Power BI Desktop application as explained [here](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility#custom-connectors)
 - In Power BI Desktop, the custom connector will be available under the name _APS Design Properties Connector_
 
+**IMPORTANT:** the *.mez file should not be shared with 3rd parties as it includes the _secrets.json_ file with your APS application credentials.
+
 ## FAQ
 
 ### Where do I find the URN?
 
-You can retrieve the design URN after loading the design into any APS-based application. For example, after opening the design of your choice in [Autodesk Construction Cloud](https://construction.autodesk.com), open the browser console and type `NOP_VIEWER.model.getData().urn` to retrieve the URN.
+You can retrieve the design URN after loading the design into any APS-based application. For example, after opening your design in [Autodesk Construction Cloud](https://construction.autodesk.com), open the browser console and type `NOP_VIEWER.model.getData().urn` to retrieve the URN.
 
 ## Troubleshooting
 

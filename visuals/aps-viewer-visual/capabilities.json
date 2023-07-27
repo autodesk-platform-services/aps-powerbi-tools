@@ -41,8 +41,7 @@
             "name": "WebAccess",
             "essential": true,
             "parameters": [
-                "https://aps-shares-app.autodesk.io",
-                "https://*.autodesk.com"
+                "*"
             ]
         }
     ],

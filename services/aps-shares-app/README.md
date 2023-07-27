@@ -1,8 +1,10 @@
-# aps-shares-app
+# APS Shares App
 
-Simple application providing public access to selected designs in [Autodesk Platform Services](https://aps.autodesk.com).
+Simple web application providing public access to selected designs in [Autodesk Platform Services](https://aps.autodesk.com).
 
 ![Screenshot](./screenshot.png)
+
+After logging in with Autodesk credentials, users can create _shares_ for specific designs they have access to. Each _share_ object provides a publicly accessible link that will always generate a fresh 2-legged token with read-only access limited to the URN of the corresponding design. Later, individual _shares_ can be deleted, and after that the public link will no longer be available.
 
 ## Development
 
@@ -12,7 +14,7 @@ Simple application providing public access to selected designs in [Autodesk Plat
 - [Node.js](https://nodejs.org) (ideally the _Long Term Support_ version)
 - Terminal (for example, [Windows Command Prompt](https://en.wikipedia.org/wiki/Cmd.exe) or [macOS Terminal](https://support.apple.com/guide/terminal/welcome/mac))
 
-### Setup & run
+### Running locally
 
 - Clone this repository
 - Install dependencies: `npm install`
@@ -27,13 +29,9 @@ Simple application providing public access to selected designs in [Autodesk Plat
 
 ## FAQ
 
-### How does the app work?
-
-After logging in with Autodesk credentials, users can create _shares_ for specific designs they have access to. Each _share_ object provides a publicly accessible link that will always generate a fresh 2-legged token with read-only access limited to the URN of the corresponding design. Later, individual _shares_ can be deleted, and after that the public link will no longer be available.
-
 ### How do I specify the design to share?
 
-To keep the application simple and easy to understand/extend, there is no UI for browsing through projects and selecting designs. Instead, users will need to specify the base64-encoded URN of the design directly. You can easily retrieve the URN after loading the design into any APS-based application. For example, after opening the design of your choice in [Autodesk Construction Cloud](https://construction.autodesk.com), open the browser console and type `NOP_VIEWER.model.getData().urn`.
+To keep the application simple and easy to understand/extend, there is no UI for project browsing and design selection. Instead, users will need to specify the base64-encoded URN of the design to share directly. You can easily retrieve the URN after loading the design into any APS-based application. For example, after opening your design in [Autodesk Construction Cloud](https://construction.autodesk.com), open the browser console and type `NOP_VIEWER.model.getData().urn` to retrieve the URN.
 
 ## Troubleshooting
 

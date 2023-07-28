@@ -12,7 +12,7 @@ import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from './settings';
-import { initializeViewerRuntime, loadModel, getVisibleNodes, getExternalIdMap, getExternalIds } from './viewer.utils';
+import { initializeViewerRuntime, loadModel, getVisibleNodes, IdMapping } from './viewer.utils';
 
 /**
  * Custom visual wrapper for the Autodesk Platform Services Viewer.
@@ -34,7 +34,7 @@ export class Visual implements IVisual {
     // Viewer runtime
     private viewer: Autodesk.Viewing.GuiViewer3D = null;
     private model: Autodesk.Viewing.Model = null;
-    private externalIdsMap: { [externalId: string]: number } = null;
+    private idMapping: IdMapping = null;
 
     /**
      * Initializes the viewer visual.
@@ -74,11 +74,11 @@ export class Visual implements IVisual {
             this.currentDataView = options.dataViews[0];
         }
 
-        if (this.viewer && this.externalIdsMap && this.currentDataView) {
+        if (this.viewer && this.idMapping && this.currentDataView) {
             const externalIds = this.currentDataView.table?.rows;
             if (externalIds?.length > 0) {
                 //@ts-ignore
-                const dbids = externalIds.map(e => this.externalIdsMap[e[0]]);
+                const dbids = await this.idMapping.getDbids(externalIds);
                 this.viewer.select(dbids);
                 this.viewer.fitToView(dbids);
             }
@@ -93,7 +93,11 @@ export class Visual implements IVisual {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 
-    private showNotification(content: string) {
+    /**
+     * Displays a notification that will automatically disappear after some time.
+     * @param content HTML content to display inside the notification.
+     */
+    private showNotification(content: string): void {
         let notifications = this.container.querySelector('#notifications');
         if (!notifications) {
             notifications = document.createElement('div');
@@ -107,18 +111,30 @@ export class Visual implements IVisual {
         setTimeout(() => notifications.removeChild(notification), 5000);
     }
 
+    /**
+     * Initializes the viewer runtime.
+     */
     private async initializeViewer(): Promise<void> {
-        await initializeViewerRuntime({ getAccessToken: this.getAccessToken });
-        this.container.innerHTML = '';
-        this.viewer = new Autodesk.Viewing.GuiViewer3D(this.container);
-        this.viewer.start();
-        this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, this.onPropertiesLoaded.bind(this));
-        this.viewer.addEventListener(Autodesk.Viewing.ISOLATE_EVENT, this.onIsolationChanged.bind(this));
-        if (this.urn) {
-            this.updateModel();
+        try {
+            await initializeViewerRuntime({ getAccessToken: this.getAccessToken });
+            this.container.innerHTML = '';
+            this.viewer = new Autodesk.Viewing.GuiViewer3D(this.container);
+            this.viewer.start();
+            this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, this.onPropertiesLoaded.bind(this));
+            this.viewer.addEventListener(Autodesk.Viewing.ISOLATE_EVENT, this.onIsolationChanged.bind(this));
+            if (this.urn) {
+                this.updateModel();
+            }
+        } catch (err) {
+            this.showNotification('Could not initialize viewer runtime. Please see console for more details.');
+            console.error(err);
         }
     }
 
+    /**
+     * Retrieves a new access token for the viewer.
+     * @param callback Callback function to call with new access token.
+     */
     private async getAccessToken(callback: (accessToken: string, expiresIn: number) => void): Promise<void> {
         try {
             const response = await fetch(this.accessTokenEndpoint);
@@ -133,6 +149,9 @@ export class Visual implements IVisual {
         }
     }
 
+    /**
+     * Ensures that the correct model is loaded into the viewer.
+     */
     private async updateModel(): Promise<void> {
         if (!this.viewer) {
             return;
@@ -141,21 +160,21 @@ export class Visual implements IVisual {
         if (this.model && this.model.getData().urn !== this.urn) {
             this.viewer.unloadModel(this.model);
             this.model = null;
-            this.externalIdsMap = null;
+            this.idMapping = null;
         }
 
-        if (this.urn) {
-            try {
+        try {
+            if (this.urn) {
                 this.model = await loadModel(this.viewer, this.urn, this.guid);
-            } catch (err) {
-                this.showNotification('Could not load model in the viewer. See console for more details.');
-                console.error(err);
-            }   
+            }
+        } catch (err) {
+            this.showNotification('Could not load model in the viewer. See console for more details.');
+            console.error(err);
         }
     }
 
     private async onPropertiesLoaded() {
-        this.externalIdsMap = await getExternalIdMap(this.model);
+        this.idMapping = new IdMapping(this.model);
     }
 
     private async onIsolationChanged() {
@@ -164,7 +183,7 @@ export class Visual implements IVisual {
             return;
         }
         const visibleNodeIds = getVisibleNodes(this.model);
-        const selectedExternalIds = await getExternalIds(this.model, visibleNodeIds);
+        const selectedExternalIds = await this.idMapping.getExternalIds(visibleNodeIds);
         const selectionIds: powerbi.extensibility.ISelectionId[] = [];
         for (const selectedExternalId of selectedExternalIds) {
             const rowIndex = allExternalIds.findIndex(row => row[0] === selectedExternalId);

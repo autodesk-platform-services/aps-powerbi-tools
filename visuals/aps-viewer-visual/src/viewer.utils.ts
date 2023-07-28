@@ -47,18 +47,42 @@ export function getVisibleNodes(model: Autodesk.Viewing.Model): number[] {
     return dbids;
 }
 
-export function getExternalIdMap(model: Autodesk.Viewing.Model): Promise<{ [externalId: string]: number; }> {
-    return new Promise(function (resolve, reject) {
-        model.getExternalIdMapping(resolve, reject);
-    });
-}
+/**
+ * Helper class for mapping between "dbIDs" (sequential numbers assigned to each design element;
+ * typically used by the Viewer APIs) and "external IDs" (typically based on persistent IDs
+ * from the authoring application, for example, Revit GUIDs).
+ */
+export class IdMapping {
+    private readonly externalIdMappingPromise: Promise<{ [externalId: string]: number; }>;
 
-export function getExternalIds(model: Autodesk.Viewing.Model, dbids: number[]): Promise<string[]> {
-    return new Promise(function (resolve, reject) {
-        model.getBulkProperties(dbids, { propFilter: ['externalId'] }, results => {
-            resolve(results.map(result => result.externalId))
-        }, reject);
-    });
+    constructor(private model: Autodesk.Viewing.Model) {
+        this.externalIdMappingPromise = new Promise((resolve, reject) => {
+            model.getExternalIdMapping(resolve, reject);
+        });
+    }
+
+    /**
+     * Converts external IDs into dbIDs.
+     * @param externalIds List of external IDs.
+     * @returns List of corresponding dbIDs.
+     */
+    getDbids(externalIds: string[]): Promise<number[]> {
+        return this.externalIdMappingPromise
+            .then(externalIdMapping => externalIds.map(externalId => externalIdMapping[externalId]));
+    }
+
+    /**
+     * Converts dbIDs into external IDs.
+     * @param dbids List of dbIDs.
+     * @returns List of corresponding external IDs.
+     */
+    getExternalIds(dbids: number[]): Promise<string[]> {
+        return new Promise((resolve, reject) => {
+            this.model.getBulkProperties(dbids, { propFilter: ['externalId'] }, results => {
+                resolve(results.map(result => result.externalId))
+            }, reject);
+        });
+    }
 }
 
 function loadScript(src: string): Promise<void> {

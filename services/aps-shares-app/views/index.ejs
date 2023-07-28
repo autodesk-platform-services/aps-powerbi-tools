@@ -75,23 +75,13 @@
 
     <!-- New share modal -->
     <div class="modal fade" id="new-share-modal" tabindex="-1" aria-labelledby="new-share-modal-label" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h1 class="modal-title fs-5" id="new-share-modal-label">New Share</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="new-share-form" action="/shares" method="post">
-                        <div class="mb-3">
-                            <label for="urn" class="col-form-label">URN:</label>
-                            <input type="text" class="form-control" id="urn" name="urn">
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="col-form-label">Description:</label>
-                            <textarea class="form-control" id="description" name="description"></textarea>
-                        </div>
-                    </form>
                     <div class="mb-3 alert alert-primary" role="alert">
                         Make sure to <a href="https://tutorials.autodesk.io/#provision-access-in-other-products">provision access to your ACC or BIM360 project</a>
                         for the APS application below so that it can access the designs you want to share:
@@ -100,6 +90,23 @@
                             <li>Application Name: <strong><%= app.name %></strong></li>
                         </ul>
                     </div>
+                    <form id="new-share-form" action="/shares" method="post">
+                        <div class="mb-3">
+                            <label for="urn" class="col-form-label">URN:</label>
+                            <input type="text" class="form-control" id="urn" name="urn">
+                        </div>
+                        <div class="mb-3 alert alert-light" role="alert">
+                            Don't know what a <em>URN</em> is? You can find more information in the
+                            <a href="https://github.com/autodesk-platform-services/aps-powerbi-tools/tree/develop/services/aps-shares-app#how-do-i-specify-the-design-to-share">GitHub repository</a>.
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="col-form-label">Description:</label>
+                            <textarea class="form-control" id="description" name="description"></textarea>
+                        </div>
+                        <div class="mb-3 alert alert-light" role="alert">
+                            Description is optional but it can be helpful when you need to find a specific share later.
+                        </div>
+                    </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

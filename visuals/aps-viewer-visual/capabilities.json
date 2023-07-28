@@ -7,13 +7,17 @@
         }
     ],
     "objects": {
-        "design": {
+        "viewer": {
             "properties": {
                 "accessTokenEndpoint": {
                     "type": {
                         "text": true
                     }
-                },
+                }
+            }
+        },
+        "design": {
+            "properties": {
                 "urn": {
                     "type": {
                         "text": true
@@ -31,7 +35,9 @@
         {
             "table": {
                 "rows": {
-                    "for": { "in": "externalIds" }
+                    "for": {
+                        "in": "externalIds"
+                    }
                 }
             }
         }

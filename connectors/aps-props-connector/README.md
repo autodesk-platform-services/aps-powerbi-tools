@@ -49,6 +49,12 @@ You can retrieve the design URN after loading the design into any APS-based appl
 
 ## Troubleshooting
 
+### "Request is being processed. Please try again later." error
+
+This error indicates that the [GET Properties](https://aps.autodesk.com/en/docs/model-derivative/v2/reference/http/metadata/urn-metadata-guid-properties-GET/) request to the Model Derivative service returns `202 Accepted`, indicating that the JSON response with all the properties is still being processed. This may happen for complex designs with a large amount of metadata. Please wait a couple minutes, and then try again. If the error persist even after several minutes, it is possible that the Model Derivative service is simply unable to generate the JSON response at all. In that case you may need to use a different way for querying the design properties, for example, using the new [POST Fetch Specific Properties](https://aps.autodesk.com/en/docs/model-derivative/v2/reference/http/metadata/urn-metadata-guid-properties-query-POST/) endpoint.
+
+### Other questions or issues
+
 Please contact us via https://aps.autodesk.com/get-help.
 
 ## License

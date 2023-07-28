@@ -25,6 +25,7 @@ After logging in with Autodesk credentials, users can create _shares_ for specif
   - `APS_CLIENT_ID` - your APS application client ID
   - `APS_CLIENT_SECRET` - your APS application client secret
   - `APS_CALLBACK_URL` - URL for users to be redirected to after they log in (should be the URL of your application followed by `/auth/callback`, for example, `http://localhost:8080/auth/callback`)
+  - `APS_APP_NAME` - name of your APS application that will appear in provisioning instructions in the UI
   - `SERVER_SESSION_SECRET` - an arbitrary string used to encipher/decipher sensitive data
 - Run the server: `npm start`
 

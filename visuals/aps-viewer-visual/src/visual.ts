@@ -12,24 +12,29 @@ import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from './settings';
-import { initializeViewerRuntime, loadModel, getVisibleNodes, getExternalIdMap, getExternalIds } from './viewer.utils';
+import { initializeViewerRuntime, loadModel, getVisibleNodes, IdMapping } from './viewer.utils';
 
 /**
  * Custom visual wrapper for the Autodesk Platform Services Viewer.
  */
 export class Visual implements IVisual {
+    // Visual state
     private host: IVisualHost;
     private container: HTMLElement;
     private formattingSettings: VisualFormattingSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
     private currentDataView: DataView = null;
-    private accessTokenEndpoint: string = null;
     private selectionManager: ISelectionManager = null;
+
+    // Visual inputs
+    private accessTokenEndpoint: string = null;
     private urn: string = '';
     private guid: string = '';
+
+    // Viewer runtime
     private viewer: Autodesk.Viewing.GuiViewer3D = null;
     private model: Autodesk.Viewing.Model = null;
-    private externalIdsMap: { [externalId: string]: number } = null;
+    private idMapping: IdMapping = null;
 
     /**
      * Initializes the viewer visual.
@@ -41,22 +46,26 @@ export class Visual implements IVisual {
         this.formattingSettingsService = new FormattingSettingsService();
         this.container = options.element;
         this.getAccessToken = this.getAccessToken.bind(this);
+        this.onPropertiesLoaded = this.onPropertiesLoaded.bind(this);
+        this.onSelectionChanged = this.onSelectionChanged.bind(this);
     }
 
     /**
      * Notifies the viewer visual of an update (data, viewmode, size change).
      * @param options Additional visual update options.
      */
-    public async update(options: VisualUpdateOptions) {
+    public async update(options: VisualUpdateOptions): Promise<void> {
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews);
 
-        const { accessTokenEndpoint } = this.formattingSettings.card;
+        const { accessTokenEndpoint } = this.formattingSettings.viewerCard;
         if (accessTokenEndpoint.value !== this.accessTokenEndpoint) {
             this.accessTokenEndpoint = accessTokenEndpoint.value;
-            this.initializeViewer();
+            if (!this.viewer) {
+                this.initializeViewer();
+            }
         }
 
-        const { urn, guid } = this.formattingSettings.card;
+        const { urn, guid } = this.formattingSettings.designCard;
         if (urn.value !== this.urn || guid.value !== this.guid) {
             this.urn = urn.value;
             this.guid = guid.value;
@@ -67,12 +76,12 @@ export class Visual implements IVisual {
             this.currentDataView = options.dataViews[0];
         }
 
-        if (this.viewer && this.externalIdsMap && this.currentDataView) {
+        if (this.viewer && this.idMapping && this.currentDataView) {
             const externalIds = this.currentDataView.table?.rows;
             if (externalIds?.length > 0) {
                 //@ts-ignore
-                const dbids = externalIds.map(e => this.externalIdsMap[e[0]]);
-                this.viewer.select(dbids);
+                const dbids = await this.idMapping.getDbids(externalIds);
+                this.viewer.isolate(dbids);
                 this.viewer.fitToView(dbids);
             }
         }
@@ -86,30 +95,65 @@ export class Visual implements IVisual {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 
-    private async initializeViewer(): Promise<void> {
-        if (this.viewer) {
-            throw new Error('Viewer has already been initialized.');
+    /**
+     * Displays a notification that will automatically disappear after some time.
+     * @param content HTML content to display inside the notification.
+     */
+    private showNotification(content: string): void {
+        let notifications = this.container.querySelector('#notifications');
+        if (!notifications) {
+            notifications = document.createElement('div');
+            notifications.id = 'notifications';
+            this.container.appendChild(notifications);
         }
-        await initializeViewerRuntime({ getAccessToken: this.getAccessToken });
-        this.container.innerHTML = '';
-        this.viewer = new Autodesk.Viewing.GuiViewer3D(this.container);
-        this.viewer.start();
-        this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, this.onPropertiesLoaded.bind(this));
-        this.viewer.addEventListener(Autodesk.Viewing.ISOLATE_EVENT, this.onIsolationChanged.bind(this));
-        this.updateModel();
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerHTML = content;
+        notifications.appendChild(notification);
+        setTimeout(() => notifications.removeChild(notification), 5000);
     }
 
+    /**
+     * Initializes the viewer runtime.
+     */
+    private async initializeViewer(): Promise<void> {
+        try {
+            await initializeViewerRuntime({ getAccessToken: this.getAccessToken });
+            this.container.innerHTML = '';
+            this.viewer = new Autodesk.Viewing.GuiViewer3D(this.container);
+            this.viewer.start();
+            this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, this.onPropertiesLoaded);
+            this.viewer.addEventListener(Autodesk.Viewing.SELECTION_CHANGED_EVENT, this.onSelectionChanged);
+            if (this.urn) {
+                this.updateModel();
+            }
+        } catch (err) {
+            this.showNotification('Could not initialize viewer runtime. Please see console for more details.');
+            console.error(err);
+        }
+    }
+
+    /**
+     * Retrieves a new access token for the viewer.
+     * @param callback Callback function to call with new access token.
+     */
     private async getAccessToken(callback: (accessToken: string, expiresIn: number) => void): Promise<void> {
-        const response = await fetch(this.accessTokenEndpoint);
-        if (!response.ok) {
-            alert('Could not retrieve share info. Please see console for more details.');
-            console.error(await response.json());
-        } else {
+        try {
+            const response = await fetch(this.accessTokenEndpoint);
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
             const share = await response.json();
             callback(share.access_token, share.expires_in);
+        } catch (err) {
+            this.showNotification('Could not retrieve access token. Please see console for more details.');
+            console.error(err);
         }
     }
 
+    /**
+     * Ensures that the correct model is loaded into the viewer.
+     */
     private async updateModel(): Promise<void> {
         if (!this.viewer) {
             return;
@@ -118,30 +162,30 @@ export class Visual implements IVisual {
         if (this.model && this.model.getData().urn !== this.urn) {
             this.viewer.unloadModel(this.model);
             this.model = null;
-            this.externalIdsMap = null;
+            this.idMapping = null;
         }
 
-        if (this.urn) {
-            try {
+        try {
+            if (this.urn) {
                 this.model = await loadModel(this.viewer, this.urn, this.guid);
-            } catch (err) {
-                alert('Could not load model in the viewer. See console for more details.');
-                console.error(err);
-            }   
+            }
+        } catch (err) {
+            this.showNotification('Could not load model in the viewer. See console for more details.');
+            console.error(err);
         }
     }
 
     private async onPropertiesLoaded() {
-        this.externalIdsMap = await getExternalIdMap(this.model);
+        this.idMapping = new IdMapping(this.model);
     }
 
-    private async onIsolationChanged() {
+    private async onSelectionChanged() {
         const allExternalIds = this.currentDataView?.table?.rows;
         if (!allExternalIds) {
             return;
         }
-        const visibleNodeIds = getVisibleNodes(this.model);
-        const selectedExternalIds = await getExternalIds(this.model, visibleNodeIds);
+        const selectedDbids = this.viewer.getSelection();
+        const selectedExternalIds = await this.idMapping.getExternalIds(selectedDbids);
         const selectionIds: powerbi.extensibility.ISelectionId[] = [];
         for (const selectedExternalId of selectedExternalIds) {
             const rowIndex = allExternalIds.findIndex(row => row[0] === selectedExternalId);

@@ -1,7 +1,7 @@
 const express = require('express');
 const { AuthClientThreeLegged, DerivativesApi } = require('forge-apis');
 const { listShares, createShare, deleteShare } = require('../shares.js');
-const { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_CALLBACK_URL } = require('../config.js');
+const { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_CALLBACK_URL, APS_APP_NAME } = require('../config.js');
 
 // Checks whether a 3-legged token representing a specific user has access to given URN.
 async function canAccessUrn(urn, credentials) {
@@ -17,15 +17,16 @@ let auth = new AuthClientThreeLegged(APS_CLIENT_ID, APS_CLIENT_SECRET, APS_CALLB
 let router = express.Router();
 
 router.get('/', async (req, res, next) => {
+    const app = { id: APS_CLIENT_ID, name: APS_APP_NAME };
     if (req.session.credentials && req.session.user) {
         try {
             const shares = await listShares(req.session.user.id);
-            res.render('index', { user: req.session.user, shares });
+            res.render('index', { user: req.session.user, shares, app });
         } catch (err) {
             next(err);
         }
     } else {
-        res.render('index', { user: null, shares: null });
+        res.render('index', { user: null, shares: null, app });
     }
 });
 

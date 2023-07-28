@@ -116,11 +116,29 @@
         </div>
     </div>
 
+    <!-- Notification toast -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notification" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">APS Shares App</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body"></div>
+        </div>
+    </div>
+
     <script>
+        function showNotification(content) {
+            document.querySelector('#notification .toast-body').innerHTML = content;
+            const toast = bootstrap.Toast.getOrCreateInstance(document.getElementById('notification'));
+            toast.show();
+        }
+
         async function copyToClipboard(code) {
             try {
                 const link = new URL(`/token?share=${code}`, document.baseURI).href;
                 await navigator.clipboard.writeText(link);
+                showNotification(`Link has been copied to clipboard.`);
             } catch (err) {
                 alert('Could not copy link to clipboard. See console for more details.');
                 console.error(err);

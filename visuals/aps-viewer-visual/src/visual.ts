@@ -46,6 +46,8 @@ export class Visual implements IVisual {
         this.formattingSettingsService = new FormattingSettingsService();
         this.container = options.element;
         this.getAccessToken = this.getAccessToken.bind(this);
+        this.onPropertiesLoaded = this.onPropertiesLoaded.bind(this);
+        this.onSelectionChanged = this.onSelectionChanged.bind(this);
     }
 
     /**
@@ -79,7 +81,7 @@ export class Visual implements IVisual {
             if (externalIds?.length > 0) {
                 //@ts-ignore
                 const dbids = await this.idMapping.getDbids(externalIds);
-                this.viewer.select(dbids);
+                this.viewer.isolate(dbids);
                 this.viewer.fitToView(dbids);
             }
         }
@@ -120,8 +122,8 @@ export class Visual implements IVisual {
             this.container.innerHTML = '';
             this.viewer = new Autodesk.Viewing.GuiViewer3D(this.container);
             this.viewer.start();
-            this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, this.onPropertiesLoaded.bind(this));
-            this.viewer.addEventListener(Autodesk.Viewing.ISOLATE_EVENT, this.onIsolationChanged.bind(this));
+            this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, this.onPropertiesLoaded);
+            this.viewer.addEventListener(Autodesk.Viewing.SELECTION_CHANGED_EVENT, this.onSelectionChanged);
             if (this.urn) {
                 this.updateModel();
             }
@@ -177,13 +179,13 @@ export class Visual implements IVisual {
         this.idMapping = new IdMapping(this.model);
     }
 
-    private async onIsolationChanged() {
+    private async onSelectionChanged() {
         const allExternalIds = this.currentDataView?.table?.rows;
         if (!allExternalIds) {
             return;
         }
-        const visibleNodeIds = getVisibleNodes(this.model);
-        const selectedExternalIds = await this.idMapping.getExternalIds(visibleNodeIds);
+        const selectedDbids = this.viewer.getSelection();
+        const selectedExternalIds = await this.idMapping.getExternalIds(selectedDbids);
         const selectionIds: powerbi.extensibility.ISelectionId[] = [];
         for (const selectedExternalId of selectedExternalIds) {
             const rowIndex = allExternalIds.findIndex(row => row[0] === selectedExternalId);

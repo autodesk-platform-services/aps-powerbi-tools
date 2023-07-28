@@ -12,3 +12,19 @@
 #overlay, button {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+
+#notifications {
+    z-index: 999;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-flow: column;
+    overflow-y: scroll;
+}
+
+.notification {
+    margin: 1em 1em 0 1em;
+    padding: 1em;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}

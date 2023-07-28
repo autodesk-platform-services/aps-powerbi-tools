@@ -93,6 +93,20 @@ export class Visual implements IVisual {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 
+    private showNotification(content: string) {
+        let notifications = this.container.querySelector('#notifications');
+        if (!notifications) {
+            notifications = document.createElement('div');
+            notifications.id = 'notifications';
+            this.container.appendChild(notifications);
+        }
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerHTML = content;
+        notifications.appendChild(notification);
+        setTimeout(() => notifications.removeChild(notification), 5000);
+    }
+
     private async initializeViewer(): Promise<void> {
         await initializeViewerRuntime({ getAccessToken: this.getAccessToken });
         this.container.innerHTML = '';
@@ -106,13 +120,16 @@ export class Visual implements IVisual {
     }
 
     private async getAccessToken(callback: (accessToken: string, expiresIn: number) => void): Promise<void> {
-        const response = await fetch(this.accessTokenEndpoint);
-        if (!response.ok) {
-            alert('Could not retrieve share info. Please see console for more details.');
-            console.error(await response.json());
-        } else {
+        try {
+            const response = await fetch(this.accessTokenEndpoint);
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
             const share = await response.json();
             callback(share.access_token, share.expires_in);
+        } catch (err) {
+            this.showNotification('Could not retrieve access token. Please see console for more details.');
+            console.error(err);
         }
     }
 
@@ -131,7 +148,7 @@ export class Visual implements IVisual {
             try {
                 this.model = await loadModel(this.viewer, this.urn, this.guid);
             } catch (err) {
-                alert('Could not load model in the viewer. See console for more details.');
+                this.showNotification('Could not load model in the viewer. See console for more details.');
                 console.error(err);
             }   
         }

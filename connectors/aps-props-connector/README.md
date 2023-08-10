@@ -25,7 +25,10 @@ This data connector is designed for scenarios where the person authoring the Pow
 }
 ```
 
+- Open your APS application on https://aps.autodesk.com/myapps, and add the following Callback URL to it: `https://oauth.powerbi.com/views/oauthredirect.html`
 - Open the project folder in Visual Studio or Visual Studio Code with the _Power Query SDK_ installed
+- Build the connector (*.mez file), either by typing `dotnet build` in the terminal, or by using one of the _Power Query SDK_
+actions such as _Evaluate current file_ or _Run TestConnection function_
 - Use the _Power Query SDK_ to create new credentials, for example, by clicking the _Set credential_ option in Visual Studio Code
 
 ![Set credential](./docs/set-credential.png)

@@ -3,18 +3,21 @@ section DesignPropsConnector;
 
 SECRETS = Json.Document(Extension.Contents("secrets.json"));
 REDIRECT_URI = "https://oauth.powerbi.com/views/oauthredirect.html";
+PAGE_SIZE = 256; // Max number of object IDs to request properties for in one request (must be less than 1000)
 
 [DataSource.Kind = "DesignPropsConnector", Publish = "DesignPropsConnector.Publish"]
 shared DesignPropsConnector.Contents = (urn as text, region as text) =>
     let
-        views = DesignPropsConnector.GetViews(urn, region),
-        firstView = List.First(views),
-        tree = DesignPropsConnector.GetTree(urn, firstView[guid], region),
+        views = DesignPropsConnector.GetViews(urn, region), // Get the list of all viewables available for the input URN
+        firstView = List.First(views), // Get the first viewable
+        tree = DesignPropsConnector.GetTree(urn, firstView[guid], region), // Get the hierarchy of objects in the viewable
         FlattenTreeNodeRecursive = (node as record, hierarchy as list) =>
             if Record.HasFields(node, "objects") then {{node[objectid], hierarchy}} & List.Combine(List.Transform(node[objects], each @FlattenTreeNodeRecursive(_, hierarchy & {node[name]})))
             else {{node[objectid], hierarchy}},
-        hierarchy = Table.FromRows(FlattenTreeNodeRecursive(tree, {}), {"objectid", "hierarchy"}),
-        properties = DesignPropsConnector.GetProperties(urn, firstView[guid], region)
+        hierarchy = Table.FromRows(FlattenTreeNodeRecursive(tree, {}), {"objectid", "hierarchy"}), // Flatten the hierarchy into a table
+        objectIdPages = List.Split(Table.Column(hierarchy, "objectid"), PAGE_SIZE), // Split object IDs into pages of predefined size
+        propertyPages = List.Transform(objectIdPages, each DesignPropsConnector.GetProperties(urn, firstView[guid], _, region)), // Retrieve properties for each page
+        properties = Table.FromRecords(List.Union(propertyPages)) // Combine paged results into a single table
     in
         Table.Join(properties, "objectid", hierarchy, "objectid");
 
@@ -155,7 +158,7 @@ DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) =>
     in
         List.First(objects);
 
-DesignPropsConnector.GetProperties = (urn as text, guid as text, region as text) =>
+DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as list, region as text) =>
     let
         base_path =
             if region = "US" then
@@ -164,9 +167,20 @@ DesignPropsConnector.GetProperties = (urn as text, guid as text, region as text)
                 "modelderivative/v2/regions/eu"
             else
                 error "Unsupported region.",
-        url = "https://developer.api.autodesk.com/" & base_path & "/designdata/" & urn & "/metadata/" & guid & "/properties?forceget=true",
+        url = "https://developer.api.autodesk.com/" & base_path & "/designdata/" & urn & "/metadata/" & guid & "/properties:query",
+        headers = [#"Content-Type" = "application/json"],
+        payload = Json.FromValue([
+            pagination = [
+                limit = List.Count(objectIds)
+            ],
+            query = [
+                #"$in" = { "objectid" } & objectIds
+            ]
+        ]),
         response = Web.Contents(url, [
-            ManualStatusHandling = {202}
+            ManualStatusHandling = {202},
+            Headers = headers,
+            Content = payload
         ]),
         metadata = Value.Metadata(response),
         json =
@@ -174,7 +188,6 @@ DesignPropsConnector.GetProperties = (urn as text, guid as text, region as text)
                 error "Request is being processed. Please try again later."
             else
                 Json.Document(response),
-        data = json[data],
-        properties = Table.FromRecords(data[collection])
+        data = json[data]
     in
-        properties;
+        data[collection];

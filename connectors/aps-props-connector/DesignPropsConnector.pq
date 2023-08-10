@@ -145,12 +145,13 @@ DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) =>
                 error "Unsupported region.",
         url = "https://developer.api.autodesk.com/" & base_path & "/designdata/" & urn & "/metadata/" & guid,
         response = Web.Contents(url, [
-            ManualStatusHandling = {202}
+            ManualStatusHandling = {202},
+            IsRetry = true
         ]),
         metadata = Value.Metadata(response),
         json =
             if metadata[Response.Status] = 202 then
-                error "Request is being processed. Please try again later."
+                error "Could not retrieve object tree. Request is being processed. Please try again later."
             else
                 Json.Document(response),
         data = json[data],
@@ -179,13 +180,14 @@ DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as li
         ]),
         response = Web.Contents(url, [
             ManualStatusHandling = {202},
+            IsRetry = true,
             Headers = headers,
             Content = payload
         ]),
         metadata = Value.Metadata(response),
         json =
             if metadata[Response.Status] = 202 then
-                error "Request is being processed. Please try again later."
+                error "Could not retrieve properties. Request is being processed. Please try again later."
             else
                 Json.Document(response),
         data = json[data]

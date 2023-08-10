@@ -1,4 +1,4 @@
-[Version = "0.0.3"]
+[Version = "0.0.4"]
 section DesignPropsConnector;
 
 SECRETS = Json.Document(Extension.Contents("secrets.json"));

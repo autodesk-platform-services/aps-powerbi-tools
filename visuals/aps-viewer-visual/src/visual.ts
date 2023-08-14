@@ -55,6 +55,7 @@ export class Visual implements IVisual {
      * @param options Additional visual update options.
      */
     public async update(options: VisualUpdateOptions): Promise<void> {
+        // this.logVisualUpdateOptions(options);
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews);
 
         const { accessTokenEndpoint } = this.formattingSettings.viewerCard;
@@ -78,11 +79,16 @@ export class Visual implements IVisual {
 
         if (this.viewer && this.idMapping && this.currentDataView) {
             const externalIds = this.currentDataView.table?.rows;
-            if (externalIds?.length > 0) {
+            //@ts-ignore
+            const isDataFilterApplied = this.currentDataView.metadata?.isDataFilterApplied;
+            if (externalIds?.length > 0 && isDataFilterApplied) {
                 //@ts-ignore
                 const dbids = await this.idMapping.getDbids(externalIds);
                 this.viewer.isolate(dbids);
                 this.viewer.fitToView(dbids);
+            } else {
+                this.viewer.isolate();
+                this.viewer.fitToView();
             }
         }
     }
@@ -197,5 +203,41 @@ export class Visual implements IVisual {
             }
         }
         this.selectionManager.select(selectionIds);
+    }
+
+    private logVisualUpdateOptions(options: VisualUpdateOptions) {
+        const EditMode = {
+            [powerbi.EditMode.Advanced]: 'Advanced',
+            [powerbi.EditMode.Default]: 'Default',
+        };
+        const VisualDataChangeOperationKind = {
+            [powerbi.VisualDataChangeOperationKind.Append]: 'Append',
+            [powerbi.VisualDataChangeOperationKind.Create]: 'Create',
+            [powerbi.VisualDataChangeOperationKind.Segment]: 'Segment',
+        };
+        const VisualUpdateType = {
+            [powerbi.VisualUpdateType.All]: 'All',
+            [powerbi.VisualUpdateType.Data]: 'Data',
+            [powerbi.VisualUpdateType.Resize]: 'Resize',
+            [powerbi.VisualUpdateType.ResizeEnd]: 'ResizeEnd',
+            [powerbi.VisualUpdateType.Style]: 'Style',
+            [powerbi.VisualUpdateType.ViewMode]: 'ViewMode',
+        };
+        const ViewMode = {
+            [powerbi.ViewMode.Edit]: 'Edit',
+            [powerbi.ViewMode.InFocusEdit]: 'InFocusEdit',
+            [powerbi.ViewMode.View]: 'View',
+        };
+        console.debug('editMode', EditMode[options.editMode]);
+        console.debug('isInFocus', options.isInFocus);
+        console.debug('jsonFilters', options.jsonFilters);
+        console.debug('operationKind', VisualDataChangeOperationKind[options.operationKind]);
+        console.debug('type', VisualUpdateType[options.type]);
+        console.debug('viewMode', ViewMode[options.viewMode]);
+        console.debug('viewport', options.viewport);
+        console.debug('Data views:');
+        for (const dataView of options.dataViews) {
+            console.debug(dataView);
+        }
     }
 }

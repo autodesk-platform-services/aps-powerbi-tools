@@ -1,25 +1,31 @@
-[Version = "0.0.4"]
+[Version = "0.0.5"]
 section DesignPropsConnector;
 
 SECRETS = Json.Document(Extension.Contents("secrets.json"));
 REDIRECT_URI = "https://oauth.powerbi.com/views/oauthredirect.html";
-PAGE_SIZE = 256; // Max number of object IDs to request properties for in one request (must be less than 1000)
+PAGE_SIZE = 512; // Max number of object IDs to request properties for in one request (must be less than 1000)
 
 [DataSource.Kind = "DesignPropsConnector", Publish = "DesignPropsConnector.Publish"]
-shared DesignPropsConnector.Contents = (urn as text, region as text) =>
+shared DesignPropsConnector.Contents = (urn as text, region as text) as table =>
     let
         views = DesignPropsConnector.GetViews(urn, region), // Get the list of all viewables available for the input URN
         firstView = List.First(views), // Get the first viewable
-        tree = DesignPropsConnector.GetTree(urn, firstView[guid], region), // Get the hierarchy of objects in the viewable
-        FlattenTreeNodeRecursive = (node as record, hierarchy as list) =>
-            if Record.HasFields(node, "objects") then {{node[objectid], hierarchy}} & List.Combine(List.Transform(node[objects], each @FlattenTreeNodeRecursive(_, hierarchy & {node[name]})))
-            else {{node[objectid], hierarchy}},
-        hierarchy = Table.FromRows(FlattenTreeNodeRecursive(tree, {}), {"objectid", "hierarchy"}), // Flatten the hierarchy into a table
-        objectIdPages = List.Split(Table.Column(hierarchy, "objectid"), PAGE_SIZE), // Split object IDs into pages of predefined size
+        objectTree = DesignPropsConnector.GetTree(urn, firstView[guid], region), // Get the hierarchy of objects in the viewable
+        flattenedObjectTree = FlattenObjectTree(objectTree), // Flatten the object hierarchy into a table
+        objectIdPages = List.Split(Table.Column(flattenedObjectTree, "objectid"), PAGE_SIZE), // Split object IDs into pages of predefined size
         propertyPages = List.Transform(objectIdPages, each DesignPropsConnector.GetProperties(urn, firstView[guid], _, region)), // Retrieve properties for each page
-        properties = Table.FromRecords(List.Union(propertyPages)) // Combine paged results into a single table
+        properties = Table.FromRecords(List.Union(propertyPages)), // Combine paged results into a single table
+        joinedTables = Table.Join(properties, "objectid", flattenedObjectTree, "objectid"), // Join flattened tree and properties tables
+        selectedColumns = Table.SelectColumns(joinedTables, {"objectid", "externalId", "hierarchy", "name", "is_group", "properties"})
     in
-        Table.Join(properties, "objectid", hierarchy, "objectid");
+        Table.RenameColumns(selectedColumns, {
+            {"objectid", "Object ID"},
+            {"externalId", "External ID"},
+            {"name", "Name"},
+            {"hierarchy", "Hierarchy"},
+            {"is_group", "Is Group"},
+            {"properties", "Properties"}
+        });
 
 DesignPropsConnector = [
     Authentication = [
@@ -118,7 +124,7 @@ DesignPropsConnector.Icons = [
     }
 ];
 
-DesignPropsConnector.GetViews = (urn as text, region as text) =>
+DesignPropsConnector.GetViews = (urn as text, region as text) as list =>
     let
         base_path =
             if region = "US" then
@@ -134,7 +140,7 @@ DesignPropsConnector.GetViews = (urn as text, region as text) =>
     in
         data[metadata];
 
-DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) =>
+DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) as record =>
     let
         base_path =
             if region = "US" then
@@ -145,12 +151,13 @@ DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) =>
                 error "Unsupported region.",
         url = "https://developer.api.autodesk.com/" & base_path & "/designdata/" & urn & "/metadata/" & guid,
         response = Web.Contents(url, [
-            ManualStatusHandling = {202}
+            ManualStatusHandling = {202},
+            IsRetry = true
         ]),
         metadata = Value.Metadata(response),
         json =
             if metadata[Response.Status] = 202 then
-                error "Request is being processed. Please try again later."
+                error "Could not retrieve object tree. Request is being processed. Please try again later."
             else
                 Json.Document(response),
         data = json[data],
@@ -158,7 +165,7 @@ DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) =>
     in
         List.First(objects);
 
-DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as list, region as text) =>
+DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as list, region as text) as list =>
     let
         base_path =
             if region = "US" then
@@ -179,15 +186,29 @@ DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as li
         ]),
         response = Web.Contents(url, [
             ManualStatusHandling = {202},
+            IsRetry = true,
             Headers = headers,
             Content = payload
         ]),
         metadata = Value.Metadata(response),
         json =
             if metadata[Response.Status] = 202 then
-                error "Request is being processed. Please try again later."
+                error "Could not retrieve properties. Request is being processed. Please try again later."
             else
                 Json.Document(response),
         data = json[data]
     in
         data[collection];
+
+FlattenObjectTree = (tree as record) as table =>
+    let
+        FlattenNode = (node as record, hierarchy as list) =>
+            if Record.HasFields(node, "objects") then
+                let entry = [ objectid = node[objectid], hierarchy = hierarchy, is_group = true ]
+                in {entry} & List.Combine(List.Transform(node[objects], each @FlattenNode(_, hierarchy & {node[name]})))
+            else
+                let entry = [ objectid = node[objectid], hierarchy = hierarchy, is_group = false ]
+                in {entry},
+        flattened = FlattenNode(tree, {})
+    in
+        Table.FromRecords(flattened);

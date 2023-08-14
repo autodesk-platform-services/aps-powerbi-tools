@@ -1,7 +1,7 @@
 {
     "name": "aps-shares-app",
     "description": "Simple web application providing public access to selected designs in Autodesk Platform Services.",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "main": "index.js",
     "scripts": {
         "start": "node index.js"

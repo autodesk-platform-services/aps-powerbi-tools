@@ -3,7 +3,7 @@ section DesignPropsConnector;
 
 SECRETS = Json.Document(Extension.Contents("secrets.json"));
 REDIRECT_URI = "https://oauth.powerbi.com/views/oauthredirect.html";
-PAGE_SIZE = 256; // Max number of object IDs to request properties for in one request (must be less than 1000)
+PAGE_SIZE = 512; // Max number of object IDs to request properties for in one request (must be less than 1000)
 
 [DataSource.Kind = "DesignPropsConnector", Publish = "DesignPropsConnector.Publish"]
 shared DesignPropsConnector.Contents = (urn as text, region as text) =>
@@ -11,15 +11,14 @@ shared DesignPropsConnector.Contents = (urn as text, region as text) =>
         views = DesignPropsConnector.GetViews(urn, region), // Get the list of all viewables available for the input URN
         firstView = List.First(views), // Get the first viewable
         tree = DesignPropsConnector.GetTree(urn, firstView[guid], region), // Get the hierarchy of objects in the viewable
-        FlattenTreeNodeRecursive = (node as record, hierarchy as list) =>
-            if Record.HasFields(node, "objects") then {{node[objectid], hierarchy}} & List.Combine(List.Transform(node[objects], each @FlattenTreeNodeRecursive(_, hierarchy & {node[name]})))
-            else {{node[objectid], hierarchy}},
-        hierarchy = Table.FromRows(FlattenTreeNodeRecursive(tree, {}), {"objectid", "hierarchy"}), // Flatten the hierarchy into a table
-        objectIdPages = List.Split(Table.Column(hierarchy, "objectid"), PAGE_SIZE), // Split object IDs into pages of predefined size
+        flattenedTree = FlattenObjectTree(tree), // Flatten the object hierarchy into a table
+        leafObjectIds = Table.Column(Table.SelectRows(flattenedTree, each [node_type] = "object"), "objectid"), // Select IDs of just the "leaf" (i.e., bottom-most) objects
+        objectIdPages = List.Split(leafObjectIds, PAGE_SIZE), // Split object IDs into pages of predefined size
         propertyPages = List.Transform(objectIdPages, each DesignPropsConnector.GetProperties(urn, firstView[guid], _, region)), // Retrieve properties for each page
-        properties = Table.FromRecords(List.Union(propertyPages)) // Combine paged results into a single table
+        properties = Table.FromRecords(List.Union(propertyPages)), // Combine paged results into a single table
+        joined = Table.Join(properties, "objectid", flattenedTree, "objectid") // Join flattened tree and properties tables
     in
-        Table.Join(properties, "objectid", hierarchy, "objectid");
+        Table.SelectColumns(joined, {"objectid", "externalId", "hierarchy", "name", "properties"});
 
 DesignPropsConnector = [
     Authentication = [
@@ -118,7 +117,7 @@ DesignPropsConnector.Icons = [
     }
 ];
 
-DesignPropsConnector.GetViews = (urn as text, region as text) =>
+DesignPropsConnector.GetViews = (urn as text, region as text) as list =>
     let
         base_path =
             if region = "US" then
@@ -134,7 +133,7 @@ DesignPropsConnector.GetViews = (urn as text, region as text) =>
     in
         data[metadata];
 
-DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) =>
+DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) as record =>
     let
         base_path =
             if region = "US" then
@@ -159,7 +158,7 @@ DesignPropsConnector.GetTree = (urn as text, guid as text, region as text) =>
     in
         List.First(objects);
 
-DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as list, region as text) =>
+DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as list, region as text) as list =>
     let
         base_path =
             if region = "US" then
@@ -193,3 +192,16 @@ DesignPropsConnector.GetProperties = (urn as text, guid as text, objectIds as li
         data = json[data]
     in
         data[collection];
+
+FlattenObjectTree = (tree as record) as table =>
+    let
+        FlattenNode = (node as record, hierarchy as list) =>
+            if Record.HasFields(node, "objects") then
+                let entry = [ objectid = node[objectid], hierarchy = hierarchy, node_type = "group" ]
+                in {entry} & List.Combine(List.Transform(node[objects], each @FlattenNode(_, hierarchy & {node[name]})))
+            else
+                let entry = [ objectid = node[objectid], hierarchy = hierarchy, node_type = "object" ]
+                in {entry},
+        flattened = FlattenNode(tree, {})
+    in
+        Table.FromRecords(flattened);

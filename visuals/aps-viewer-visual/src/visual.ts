@@ -78,10 +78,10 @@ export class Visual implements IVisual {
         }
 
         if (this.viewer && this.idMapping && this.currentDataView) {
-            const externalIds = this.currentDataView.table?.rows;
+            const externalIds = this.currentDataView.table.rows || [];
             //@ts-ignore
-            const isDataFilterApplied = this.currentDataView.metadata?.isDataFilterApplied;
-            if (externalIds?.length > 0 && isDataFilterApplied) {
+            const isDataFilterApplied = this.currentDataView.metadata && this.currentDataView.metadata.isDataFilterApplied;
+            if (externalIds.length > 0 && isDataFilterApplied) {
                 //@ts-ignore
                 const dbids = await this.idMapping.getDbids(externalIds);
                 this.viewer.isolate(dbids);
@@ -186,7 +186,7 @@ export class Visual implements IVisual {
     }
 
     private async onSelectionChanged() {
-        const allExternalIds = this.currentDataView?.table?.rows;
+        const allExternalIds = this.currentDataView.table.rows;
         if (!allExternalIds) {
             return;
         }

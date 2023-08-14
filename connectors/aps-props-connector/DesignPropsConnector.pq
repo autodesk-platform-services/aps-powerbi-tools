@@ -6,19 +6,26 @@ REDIRECT_URI = "https://oauth.powerbi.com/views/oauthredirect.html";
 PAGE_SIZE = 512; // Max number of object IDs to request properties for in one request (must be less than 1000)
 
 [DataSource.Kind = "DesignPropsConnector", Publish = "DesignPropsConnector.Publish"]
-shared DesignPropsConnector.Contents = (urn as text, region as text) =>
+shared DesignPropsConnector.Contents = (urn as text, region as text) as table =>
     let
         views = DesignPropsConnector.GetViews(urn, region), // Get the list of all viewables available for the input URN
         firstView = List.First(views), // Get the first viewable
-        tree = DesignPropsConnector.GetTree(urn, firstView[guid], region), // Get the hierarchy of objects in the viewable
-        flattenedTree = FlattenObjectTree(tree), // Flatten the object hierarchy into a table
-        leafObjectIds = Table.Column(Table.SelectRows(flattenedTree, each [node_type] = "object"), "objectid"), // Select IDs of just the "leaf" (i.e., bottom-most) objects
-        objectIdPages = List.Split(leafObjectIds, PAGE_SIZE), // Split object IDs into pages of predefined size
+        objectTree = DesignPropsConnector.GetTree(urn, firstView[guid], region), // Get the hierarchy of objects in the viewable
+        flattenedObjectTree = FlattenObjectTree(objectTree), // Flatten the object hierarchy into a table
+        objectIdPages = List.Split(Table.Column(flattenedObjectTree, "objectid"), PAGE_SIZE), // Split object IDs into pages of predefined size
         propertyPages = List.Transform(objectIdPages, each DesignPropsConnector.GetProperties(urn, firstView[guid], _, region)), // Retrieve properties for each page
         properties = Table.FromRecords(List.Union(propertyPages)), // Combine paged results into a single table
-        joined = Table.Join(properties, "objectid", flattenedTree, "objectid") // Join flattened tree and properties tables
+        joinedTables = Table.Join(properties, "objectid", flattenedObjectTree, "objectid"), // Join flattened tree and properties tables
+        selectedColumns = Table.SelectColumns(joinedTables, {"objectid", "externalId", "hierarchy", "name", "is_group", "properties"})
     in
-        Table.SelectColumns(joined, {"objectid", "externalId", "hierarchy", "name", "properties"});
+        Table.RenameColumns(selectedColumns, {
+            {"objectid", "Object ID"},
+            {"externalId", "External ID"},
+            {"name", "Name"},
+            {"hierarchy", "Hierarchy"},
+            {"is_group", "Is Group"},
+            {"properties", "Properties"}
+        });
 
 DesignPropsConnector = [
     Authentication = [
@@ -197,10 +204,10 @@ FlattenObjectTree = (tree as record) as table =>
     let
         FlattenNode = (node as record, hierarchy as list) =>
             if Record.HasFields(node, "objects") then
-                let entry = [ objectid = node[objectid], hierarchy = hierarchy, node_type = "group" ]
+                let entry = [ objectid = node[objectid], hierarchy = hierarchy, is_group = true ]
                 in {entry} & List.Combine(List.Transform(node[objects], each @FlattenNode(_, hierarchy & {node[name]})))
             else
-                let entry = [ objectid = node[objectid], hierarchy = hierarchy, node_type = "object" ]
+                let entry = [ objectid = node[objectid], hierarchy = hierarchy, is_group = false ]
                 in {entry},
         flattened = FlattenNode(tree, {})
     in

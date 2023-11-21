@@ -15,7 +15,7 @@ router.get('/auth/callback', async (req, res, next) => {
         const { body: profile } = await new UserProfileApi().getUserProfile(auth, credentials);
         credentials.expires_at = Date.now() + credentials.expires_in * 1000;;
         req.session.credentials = credentials;
-        req.session.user = { id: profile.userId, name: `${profile.firstName} ${profile.lastName}` };
+        req.session.user = { id: profile.sub, name: profile.name };
         res.redirect('/');
     } catch (err) {
         next(err);

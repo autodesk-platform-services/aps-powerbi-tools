@@ -54,6 +54,18 @@ If you don't want to build your own web service, consider using the [APS Shares 
 
 You can retrieve the design URN and viewable GUID after loading the design into any APS-based application. For example, after opening your design in [Autodesk Construction Cloud](https://construction.autodesk.com), open the browser console and type `NOP_VIEWER.model.getData().urn` to retrieve the URN, and `NOP_VIEWER.model.getDocumentNode().guid()` to retrieve the GUID.
 
+### Why the visual card cannot load my models?
+
+Here are check points for your reference:
+
+1. Ensure the changes you made has been saved into the PowerBI report after filling in `Access Token Endpoint`, `URN` and `GUID`. Commonly, we can verify this by closing PowerBI Desktop to see if it prompts warnings about unsaved changes.
+
+2. Check if you have right access to the model by using the [simple viewer sample](https://aps.autodesk.com/en/docs/viewer/v7/developers_guide/viewer_basics/starting-html/) from APS viewer documentation with the access token and urn from the token endpoint. 
+
+    If your models are hosted on BIM360/ACC, please ensure your client id used in the token endpoint has provisioned in the BIM360/ACC account. If not, please follow the [Provision access in other products](https://tutorials.autodesk.io/#provision-access-in-other-products) section in APS tutorial to provision your client id.
+
+3. Upload your PowerBI report containing the viewer visual card to your PowerBI workspace (https://app.powerbi.com/groups/me/list?experience=power-bi) and check if there is any error message appearing in the [Web browser dev console](https://developer.chrome.com/docs/devtools/console/).
+
 ## Troubleshooting
 
 Please contact us via https://aps.autodesk.com/get-help.

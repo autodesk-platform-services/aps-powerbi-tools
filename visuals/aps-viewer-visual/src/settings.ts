@@ -2,11 +2,11 @@
 
 import { formattingSettings } from 'powerbi-visuals-utils-formattingmodel';
 
-import FormattingSettingsCard = formattingSettings.Card;
-import FormattingSettingsSlice = formattingSettings.Slice;
-import FormattingSettingsModel = formattingSettings.Model;
+import Card = formattingSettings.SimpleCard;
+import Slice = formattingSettings.Slice;
+import Model = formattingSettings.Model;
 
-class ViewerCard extends FormattingSettingsCard {
+class ViewerCard extends Card {
     accessTokenEndpoint = new formattingSettings.TextInput({
         name: 'accessTokenEndpoint',
         displayName: 'Access Token Endpoint',
@@ -16,10 +16,10 @@ class ViewerCard extends FormattingSettingsCard {
     });
     name: string = 'viewer';
     displayName: string = 'Viewer Runtime';
-    slices: Array<FormattingSettingsSlice> = [this.accessTokenEndpoint];
+    slices: Array<Slice> = [this.accessTokenEndpoint];
 }
 
-class DesignCard extends FormattingSettingsCard {
+class DesignCard extends Card {
     urn = new formattingSettings.TextInput({
         name: 'urn',
         displayName: 'URN',
@@ -36,11 +36,11 @@ class DesignCard extends FormattingSettingsCard {
     });
     name: string = 'design';
     displayName: string = 'Design';
-    slices: Array<FormattingSettingsSlice> = [this.urn, this.guid];
+    slices: Array<Slice> = [this.urn, this.guid];
 }
 
-export class VisualFormattingSettingsModel extends FormattingSettingsModel {
+export class VisualSettingsModel extends Model {
     viewerCard = new ViewerCard();
     designCard = new DesignCard();
-    cards = [this.viewerCard, this.designCard];
+    Card = [this.viewerCard, this.designCard];
 }

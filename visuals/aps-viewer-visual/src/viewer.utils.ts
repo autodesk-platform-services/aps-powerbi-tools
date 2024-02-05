@@ -13,7 +13,7 @@ export function initializeViewerRuntime(options: Autodesk.Viewing.InitializerOpt
         runtime.ready = (async function () {
             await loadScript('https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js');
             await loadStylesheet('https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.css');
-            return new Promise((resolve, reject) => Autodesk.Viewing.Initializer(runtime.options, resolve));
+            return new Promise((resolve) => Autodesk.Viewing.Initializer(runtime.options, resolve));
         })() as Promise<void>;
     } else {
         if (['accessToken', 'getAccessToken', 'env', 'api', 'language'].some(prop => options[prop] !== runtime.options[prop])) {

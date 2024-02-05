@@ -11,8 +11,8 @@ import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import DataView = powerbi.DataView;
 
-import { VisualFormattingSettingsModel } from './settings';
-import { initializeViewerRuntime, loadModel, getVisibleNodes, IdMapping } from './viewer.utils';
+import { VisualSettingsModel } from './settings';
+import { initializeViewerRuntime, loadModel, IdMapping } from './viewer.utils';
 
 /**
  * Custom visual wrapper for the Autodesk Platform Services Viewer.
@@ -21,7 +21,7 @@ export class Visual implements IVisual {
     // Visual state
     private host: IVisualHost;
     private container: HTMLElement;
-    private formattingSettings: VisualFormattingSettingsModel;
+    private formattingSettings: VisualSettingsModel;
     private formattingSettingsService: FormattingSettingsService;
     private currentDataView: DataView = null;
     private selectionManager: ISelectionManager = null;
@@ -56,7 +56,7 @@ export class Visual implements IVisual {
      */
     public async update(options: VisualUpdateOptions): Promise<void> {
         // this.logVisualUpdateOptions(options);
-        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews);
+        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualSettingsModel, options.dataViews[0]);
 
         const { accessTokenEndpoint } = this.formattingSettings.viewerCard;
         if (accessTokenEndpoint.value !== this.accessTokenEndpoint) {
@@ -79,11 +79,9 @@ export class Visual implements IVisual {
 
         if (this.viewer && this.idMapping && this.currentDataView) {
             const externalIds = this.currentDataView.table.rows || [];
-            //@ts-ignore
-            const isDataFilterApplied = this.currentDataView.metadata && this.currentDataView.metadata.isDataFilterApplied;
+            const isDataFilterApplied = this.currentDataView.metadata && (this.currentDataView.metadata as any).isDataFilterApplied;
             if (externalIds.length > 0 && isDataFilterApplied) {
-                //@ts-ignore
-                const dbids = await this.idMapping.getDbids(externalIds);
+                const dbids = await this.idMapping.getDbids(externalIds as unknown as string[]);
                 this.viewer.isolate(dbids);
                 this.viewer.fitToView(dbids);
             } else {
@@ -114,7 +112,7 @@ export class Visual implements IVisual {
         }
         const notification = document.createElement('div');
         notification.className = 'notification';
-        notification.innerHTML = content;
+        notification.innerText = content;
         notifications.appendChild(notification);
         setTimeout(() => notifications.removeChild(notification), 5000);
     }
@@ -125,7 +123,7 @@ export class Visual implements IVisual {
     private async initializeViewer(): Promise<void> {
         try {
             await initializeViewerRuntime({ getAccessToken: this.getAccessToken });
-            this.container.innerHTML = '';
+            this.container.innerText = '';
             this.viewer = new Autodesk.Viewing.GuiViewer3D(this.container);
             this.viewer.start();
             this.viewer.addEventListener(Autodesk.Viewing.OBJECT_TREE_CREATED_EVENT, this.onPropertiesLoaded);

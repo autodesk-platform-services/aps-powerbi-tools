@@ -27,7 +27,7 @@ export class Visual implements IVisual {
     private selectionManager: ISelectionManager = null;
 
     // Visual inputs
-    private accessTokenEndpoint: string = null;
+    private accessTokenEndpoint: string = '';
     private urn: string = '';
     private guid: string = '';
 

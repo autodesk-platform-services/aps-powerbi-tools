@@ -21,6 +21,7 @@ If you don't want to build your own web service, consider using the [APS Shares 
 ### Prerequisites
 
 - [Set up your environment for developing Power BI visuals](https://learn.microsoft.com/en-us/power-bi/developer/visuals/environment-setup)
+    - Note: this project has been developed and tested with `pbiviz` version 5.4.x
 - Access to Autodesk Construction Cloud or BIM360 project with existing designs to load into the visual
 
 ### Running locally

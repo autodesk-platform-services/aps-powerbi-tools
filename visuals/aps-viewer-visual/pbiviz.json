@@ -9,7 +9,7 @@
         "supportUrl": "https://github.com/autodesk-platform-services/aps-powerbi-tools",
         "gitHubUrl": "https://github.com/autodesk-platform-services/aps-powerbi-tools"
     },
-    "apiVersion": "5.1.0",
+    "apiVersion": "5.4.0",
     "author": {
         "name": "Autodesk Platform Services - Developer Advocacy Support",
         "email": "aps.help@autodesk.com"

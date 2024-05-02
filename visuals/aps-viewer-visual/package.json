@@ -9,7 +9,7 @@
     "lint": "npx eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {
-    "powerbi-visuals-api": "~5.1.0",
+    "powerbi-visuals-api": "~5.4.0",
     "powerbi-visuals-utils-formattingmodel": "6.0.0"
   },
   "devDependencies": {

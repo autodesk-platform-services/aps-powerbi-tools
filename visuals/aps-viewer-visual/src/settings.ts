@@ -42,5 +42,5 @@ class DesignCard extends Card {
 export class VisualSettingsModel extends Model {
     viewerCard = new ViewerCard();
     designCard = new DesignCard();
-    Card = [this.viewerCard, this.designCard];
+    cards = [this.viewerCard, this.designCard];
 }

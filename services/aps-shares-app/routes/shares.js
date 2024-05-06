@@ -1,27 +1,32 @@
 const express = require('express');
-const { AuthClientThreeLegged, DerivativesApi } = require('forge-apis');
+const { SdkManagerBuilder } = require('@aps_sdk/autodesk-sdkmanager');
+const { AuthenticationClient } = require('@aps_sdk/authentication');
+const { ModelDerivativeClient } = require('@aps_sdk/model-derivative');
 const { listShares, createShare, deleteShare } = require('../shares.js');
-const { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_CALLBACK_URL, APS_APP_NAME } = require('../config.js');
+const { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_APP_NAME } = require('../config.js');
+
+const sdkManager = SdkManagerBuilder.create().build();
+const authenticationClient = new AuthenticationClient(sdkManager);
+const modelDerivativeClient = new ModelDerivativeClient(sdkManager);
+const router = express.Router();
 
 // Checks whether a 3-legged token representing a specific user has access to given URN.
 async function canAccessUrn(urn, credentials) {
     try {
-        await new DerivativesApi().getManifest(urn, {}, null, credentials);
+        await modelDerivativeClient.getManifest(credentials.access_token, urn);
     } catch (err) {
         return false;
     }
     return true;
 }
 
-let auth = new AuthClientThreeLegged(APS_CLIENT_ID, APS_CLIENT_SECRET, APS_CALLBACK_URL, ['data:read']);
-let router = express.Router();
-
 router.get('/', async (req, res, next) => {
+    const { credentials, user } = req.session;
     const app = { id: APS_CLIENT_ID, name: APS_APP_NAME };
-    if (req.session.credentials && req.session.user) {
+    if (credentials && user) {
         try {
-            const shares = await listShares(req.session.user.id);
-            res.render('index', { user: req.session.user, shares, app });
+            const shares = await listShares(user.id);
+            res.render('index', { user, shares, app });
         } catch (err) {
             next(err);
         }
@@ -31,17 +36,20 @@ router.get('/', async (req, res, next) => {
 });
 
 router.use('/shares', async (req, res, next) => {
+    const { credentials, user } = req.session;
     try {
-        if (req.session.credentials && req.session.user) {
-            if (req.session.credentials.expires_at < Date.now()) {
-                const credentials = await auth.refreshToken(req.session.credentials);
+        if (credentials && user) {
+            if (credentials.expires_at < Date.now()) {
+                const refreshToken = credentials.refresh_token;
+                const credentials = await authenticationClient.getRefreshToken(APS_CLIENT_ID, refreshToken, {
+                    clientSecret: APS_CLIENT_SECRET
+                });
                 credentials.expires_at = Date.now() + credentials.expires_in * 1000;
                 req.session.credentials = credentials;
             }
-            req.user_id = req.session.user.id;
+            req.user_id = user.id;
             next();
         } else {
-            // res.status(401).end('Unauthorized access.');
             throw new Error('Unauthorized access.');
         }
     } catch (err) {

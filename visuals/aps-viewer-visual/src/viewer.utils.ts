@@ -7,10 +7,16 @@ const runtime: { options: Autodesk.Viewing.InitializerOptions; ready: Promise<vo
     ready: null
 };
 
+declare global {
+    interface Window { DISABLE_INDEXED_DB: boolean; }
+}
+
 export function initializeViewerRuntime(options: Autodesk.Viewing.InitializerOptions): Promise<void> {
     if (!runtime.ready) {
         runtime.options = { ...options };
         runtime.ready = (async function () {
+            window.DISABLE_INDEXED_DB = true;
+
             await loadScript('https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js');
             await loadStylesheet('https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.css');
             return new Promise((resolve) => Autodesk.Viewing.Initializer(runtime.options, resolve));

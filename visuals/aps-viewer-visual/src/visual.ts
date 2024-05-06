@@ -27,7 +27,7 @@ export class Visual implements IVisual {
     private selectionManager: ISelectionManager = null;
 
     // Visual inputs
-    private accessTokenEndpoint: string = null;
+    private accessTokenEndpoint: string = '';
     private urn: string = '';
     private guid: string = '';
 
@@ -122,7 +122,7 @@ export class Visual implements IVisual {
      */
     private async initializeViewer(): Promise<void> {
         try {
-            await initializeViewerRuntime({ getAccessToken: this.getAccessToken });
+            await initializeViewerRuntime({ env: 'AutodeskProduction2', api: 'streamingV2', getAccessToken: this.getAccessToken });
             this.container.innerText = '';
             this.viewer = new Autodesk.Viewing.GuiViewer3D(this.container);
             this.viewer.start();

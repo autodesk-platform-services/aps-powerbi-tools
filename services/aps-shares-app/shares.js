@@ -1,25 +1,33 @@
 const crypto = require('crypto');
 const axios = require('axios').default;
-const { AuthClientTwoLegged, BucketsApi, ObjectsApi } = require('forge-apis');
+const { SdkManagerBuilder } = require('@aps_sdk/autodesk-sdkmanager');
+const { AuthenticationClient, Scopes } = require('@aps_sdk/authentication');
+const { OssClient, CreateBucketXAdsRegionEnum, CreateBucketsPayloadPolicyKeyEnum, CreateSignedResourceAccessEnum } = require('@aps_sdk/oss');
 const { APS_CLIENT_ID, APS_CLIENT_SECRET , APS_BUCKET_KEY, SERVER_SESSION_SECRET } = require('./config.js');
 
-let auth = new AuthClientTwoLegged(APS_CLIENT_ID, APS_CLIENT_SECRET, ['bucket:create', 'bucket:read', 'data:create', 'data:write', 'data:read'], true);
-let bucketsApi = new BucketsApi();
-let objectsApi = new ObjectsApi();
+const sdkManager = SdkManagerBuilder.create().build();
+const authenticationClient = new AuthenticationClient(sdkManager);
+const ossClient = new OssClient(sdkManager);
 
-async function getCredentials() {
-    if (!auth.isAuthorized()) {
-        await auth.authenticate();
+let _credentials = null;
+async function getAccessToken() {
+    if (!_credentials || _credentials.expires_at < Date.now()) {
+        _credentials = await authenticationClient.getTwoLeggedToken(APS_CLIENT_ID, APS_CLIENT_SECRET, [Scopes.BucketCreate, Scopes.BucketRead, Scopes.DataCreate, Scopes.DataWrite, Scopes.DataRead]);
+        _credentials.expires_at = Date.now() + _credentials.expires_in * 1000;
     }
-    return auth.getCredentials();
+    return _credentials.access_token;
 }
 
 async function ensureBucketExists(bucketKey) {
+    const token = await getAccessToken();
     try {
-        await bucketsApi.getBucketDetails(bucketKey, null, await getCredentials());
+        await ossClient.getBucketDetails(token, bucketKey);
     } catch (err) {
-        if (err.response.status === 404) {
-            await bucketsApi.createBucket({ bucketKey, policyKey: 'persistent' }, {}, null, await getCredentials());
+        if (err.axiosError.response.status === 404) {
+            await ossClient.createBucket(token, CreateBucketXAdsRegionEnum.Us, {
+                bucketKey,
+                policyKey: CreateBucketsPayloadPolicyKeyEnum.Persistent
+            });
         } else {
             throw err;
         }
@@ -28,8 +36,9 @@ async function ensureBucketExists(bucketKey) {
 
 async function listShares(ownerId) {
     await ensureBucketExists(APS_BUCKET_KEY);
+    const token = await getAccessToken();
     try {
-        const { body: { signedUrl } } = await objectsApi.createSignedResource(APS_BUCKET_KEY, ownerId, {}, { access: 'read' }, null, await getCredentials());
+        const { signedUrl } = await ossClient.createSignedResource(token, APS_BUCKET_KEY, ownerId, { access: CreateSignedResourceAccessEnum.Read });
         const { data: shares } = await axios.get(signedUrl);
         return shares;
     } catch (err) {
@@ -44,7 +53,8 @@ async function listShares(ownerId) {
 async function updateShares(ownerId, func) {
     let shares = await listShares(ownerId);
     shares = func(shares);
-    const { body: { signedUrl } } = await objectsApi.createSignedResource(APS_BUCKET_KEY, ownerId, {}, { access: 'write' }, null, await getCredentials());
+    const token = await getAccessToken();
+    const { signedUrl } = await ossClient.createSignedResource(token, APS_BUCKET_KEY, ownerId, { access: CreateSignedResourceAccessEnum.Write });
     const { data } = await axios.put(signedUrl, JSON.stringify(shares));
     return data;
 }

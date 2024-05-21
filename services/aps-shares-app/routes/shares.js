@@ -1,7 +1,7 @@
 const express = require('express');
 const { SdkManagerBuilder } = require('@aps_sdk/autodesk-sdkmanager');
 const { AuthenticationClient } = require('@aps_sdk/authentication');
-const { ModelDerivativeClient } = require('@aps_sdk/model-derivative');
+const { ModelDerivativeClient, Region } = require('@aps_sdk/model-derivative');
 const { listShares, createShare, deleteShare } = require('../shares.js');
 const { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_APP_NAME } = require('../config.js');
 
@@ -13,7 +13,15 @@ const router = express.Router();
 // Checks whether a 3-legged token representing a specific user has access to given URN.
 async function canAccessUrn(urn, credentials) {
     try {
-        await modelDerivativeClient.getManifest(credentials.access_token, urn);
+        let region = Region.Us;
+        const urnBuffer = Buffer.from(urn, 'base64');
+        const objectId = urnBuffer.toString('utf-8');
+
+        if (objectId?.toLowerCase().includes('emea')) {
+            region = Region.Emea;
+        }
+        
+        await modelDerivativeClient.getManifest(credentials.access_token, urn, { region });
     } catch (err) {
         return false;
     }

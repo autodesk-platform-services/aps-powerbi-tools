@@ -42,7 +42,7 @@ async function listShares(ownerId) {
         const { data: shares } = await axios.get(signedUrl);
         return shares;
     } catch (err) {
-        if (err.response.status === 404) {
+        if (err.axiosError.response.status === 404) {
             return [];
         } else {
             throw err;

@@ -5,6 +5,7 @@
 export class tandemViewer {
     viewer: any;
     app: any;
+    facilities: any;
 
     async init(_access_token:string, container: HTMLElement) {
         return new Promise(resolve=>{
@@ -40,13 +41,13 @@ export class tandemViewer {
 
     async addJSFiles(): Promise<void> {
         return new Promise<void>((resolve,reject) => {
-            let link = document.createElement("link");
+            const link = document.createElement("link");
             link.href = 'https://static.tandem.autodesk.com/1.0.475/style.min.css';
             link.type = 'text/css';
             link.rel = 'stylesheet';
             document.head.appendChild(link);
 
-            let elt = document.createElement('script');
+            const elt = document.createElement('script');
             elt.src = 'https://static.tandem.autodesk.com/1.0.475/viewer3D.js';
             document.head.appendChild(elt);
 
@@ -59,10 +60,17 @@ export class tandemViewer {
     async fetchFacilities() {
         const FacilitiesSharedWithMe = await this.app.getCurrentTeamsFacilities();
         const myFacilities = await this.app.getUsersFacilities();
-        console.log(FacilitiesSharedWithMe)
-        console.log(myFacilities)
-        return [].concat(FacilitiesSharedWithMe, myFacilities);
+        return [].concat(myFacilities, FacilitiesSharedWithMe);
     }
+
+    async openFacilityURN(URN:string) {
+        if (!this.facilities)
+            this.facilities = this.fetchFacilities();
+        // return object, and search for URN within facs array
+        const facility = this.facilities[0];
+        this.app.displayFacility(facility, false, this.viewer);
+    }
+
 
     async openFacility(facility:any) {
         this.app.displayFacility(facility, false, this.viewer);

@@ -9,9 +9,9 @@
     "objects": {
         "design": {
             "properties": {
-                "facilityNum": {
+                "facilityURN": {
                     "type": {
-                        "numeric": true
+                        "text": true
                     }
                 },
                 "shareUrl": {

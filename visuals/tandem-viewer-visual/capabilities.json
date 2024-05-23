@@ -40,6 +40,7 @@
                 "https://aps-custom-shares.fly.dev",
                 "https://f2iv2mhpbebrhrkfsnn2lvloxq0janqb.lambda-url.us-west-2.on.aws",
                 "https://*.autodesk.com",
+                "wss://*.autodesk.com",
                 "https://static.tandem.autodesk.com",
                 "https://cdn.derivative.autodesk.com"
             ]

@@ -57,23 +57,18 @@ export class tandemViewer {
         })
     }
 
+    async loadModel(URN:string) {
+        const allFacilities = await this.fetchFacilities();
+        const facObj = allFacilities.find(i => i.twinId === URN);
+        this.app.displayFacility(facObj, false, this.viewer);
+    }
+
     async fetchFacilities() {
+        if (this.facilities) return this.facilities;
         const FacilitiesSharedWithMe = await this.app.getCurrentTeamsFacilities();
         const myFacilities = await this.app.getUsersFacilities();
-        return [].concat(myFacilities, FacilitiesSharedWithMe);
-    }
-
-    async openFacilityURN(URN:string) {
-        if (!this.facilities)
-            this.facilities = this.fetchFacilities();
-        // return object, and search for URN within facs array
-        const facility = this.facilities[0];
-        this.app.displayFacility(facility, false, this.viewer);
-    }
-
-
-    async openFacility(facility:any) {
-        this.app.displayFacility(facility, false, this.viewer);
+        this.facilities = [].concat(myFacilities || [], FacilitiesSharedWithMe || []);
+        return this.facilities;
     }
 
     updateVisibility ( list:any ) {

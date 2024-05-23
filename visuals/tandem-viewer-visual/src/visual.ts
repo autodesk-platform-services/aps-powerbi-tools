@@ -25,7 +25,7 @@ export class Visual implements IVisual {
     private selectionManager: ISelectionManager = null;
     private container: HTMLElement;
     private tandem: tandemViewer;
-    private shareUrl: string;
+    private accessTokenEndpoint: string;
     private facilityURN: string;
 
     constructor(options: VisualConstructorOptions) {
@@ -35,14 +35,12 @@ export class Visual implements IVisual {
         this.container = options.element;        
     }
 
-    private async startViewer(facURN:string) {
+    private async startViewer(facilityURN:string) {
         this.tandem = new tandemViewer();
         await this.tandem.addJSFiles();
-        const token = await this.tandem.getAccessToken(this.shareUrl);
+        const token = await this.tandem.getAccessToken(this.accessTokenEndpoint);
         await this.tandem.init(token, this.container);
-        const allFacilities = await this.tandem.fetchFacilities();
-        // map allFacilities array, and return the object that matches the facURN
-        await this.tandem.openFacility(allFacilities[facURN]);
+        await this.tandem.loadModel(facilityURN);
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
@@ -50,17 +48,18 @@ export class Visual implements IVisual {
     }
 
     public async update(options: VisualUpdateOptions) {
-        //if (options.type != 2)  return; //ignore resizing or moving
+        //if ((options.type !=510) && (options.type != 2))  return; //ignore resizing or moving
         //@ts-ignore
-        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews);
-        if (this.formattingSettings.card.shareUrl.value !== this.shareUrl) {
-                this.facilityURN = this.formattingSettings.card.facilityURN.value;
-                this.shareUrl = this.formattingSettings.card.shareUrl.value;
-                if (this.shareUrl.length>1) 
+        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews[0]);
+        const { accessTokenEndpoint, facilityURN } = this.formattingSettings.viewerCard;        
+        if (accessTokenEndpoint.value !== this.accessTokenEndpoint) {
+                this.accessTokenEndpoint = accessTokenEndpoint.value;
+                this.facilityURN = facilityURN.value;
+                if ((this.accessTokenEndpoint.length>1) && (this.facilityURN.length>1))
                     this.startViewer(this.facilityURN);
             
         }
-        if (this.shareUrl.length>1) 
+        if ((this.accessTokenEndpoint.length>1) && (this.facilityURN.length>1) && (options.dataViews[0]) && (options.dataViews[0]).table)
             this.tandem.updateVisibility(options.dataViews[0].table.rows);
     }        
 }

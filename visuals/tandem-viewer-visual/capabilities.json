@@ -1,0 +1,53 @@
+{
+    "dataRoles": [
+        {
+            "displayName": "External ID",
+            "name": "externalIds",
+            "kind": "Grouping"
+        }
+    ],
+    "objects": {
+        "design": {
+            "properties": {
+                "facilityURN": {
+                    "type": {
+                        "text": true
+                    }
+                },
+                "shareUrl": {
+                    "type": {
+                        "text": true
+                    }
+                }
+            }
+        }
+    },
+    "dataViewMappings": [
+        {
+            "table": {
+                "rows": {
+                    "for": { "in": "externalIds" },
+                    "dataReductionAlgorithm": { "sample": { "count": 64000 } }
+                }
+            }
+        }
+    ],
+    "privileges": [
+        {
+            "name": "WebAccess",
+            "essential": true,
+            "parameters": [
+                "https://aps-custom-shares.fly.dev",
+                "https://f2iv2mhpbebrhrkfsnn2lvloxq0janqb.lambda-url.us-west-2.on.aws",
+                "https://*.autodesk.com",
+                "wss://*.autodesk.com",
+                "https://static.tandem.autodesk.com",
+                "https://cdn.derivative.autodesk.com"
+            ]
+        }
+    ],
+    "supportsMultiVisualSelection": true,
+    "suppressDefaultTitle": true,
+    "supportsLandingPage": true,
+    "supportsEmptyDataView": true
+}

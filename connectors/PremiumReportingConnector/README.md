@@ -38,7 +38,7 @@ actions such as _Evaluate current file_ or _Run TestConnection function_
 
 - Build the project using `dotnet build`
 - Import the generated *.mez file from the _bin_ subfolder into Power BI Desktop application as explained [here](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility#custom-connectors)
-- In Power BI Desktop, the custom connector will be available under the name _APS Design Properties Connector_
+- In Power BI Desktop, the custom connector will be available under the name _APS Premium Reporting Connector_
 
 > **IMPORTANT:** the *.mez file should not be shared with 3rd parties as it includes the _secrets.json_ file with your APS application credentials.
 

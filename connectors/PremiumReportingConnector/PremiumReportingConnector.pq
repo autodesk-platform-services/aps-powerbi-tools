@@ -8,12 +8,13 @@ PAGE_SIZE = 512;
 [DataSource.Kind = "PremiumReportingConnector", Publish = "PremiumReportingConnector.Publish"]
 shared PremiumReportingConnector.Contents = () =>
     let
-        contexts = PremiumReportingConnector.GetContexts(), // Get the list of all available contexts
-        firstContext = List.First(contexts), // Get the first context
-        usageQuery = PremiumReportingConnector.RunUsageQuery(firstContext[contextId]), // Run a usage query
-        usageQueryResults = PremiumReportingConnector.GetUsageQueryResults(usageQuery[id]) // Get the results of the usage query
+        contexts = PremiumReportingConnector.GetContexts(),
+        _table = #table(
+            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
+            List.Transform(contexts, each { _[alias], _[contextId], PremiumReportingConnector.GetContextNavTable(_[contextId]), "View", "View", false })
+        )
     in
-        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+        Table.ToNavigationTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
 PremiumReportingConnector = [
     Authentication = [
@@ -111,13 +112,21 @@ PremiumReportingConnector.Icons = [
     }
 ];
 
-// ContextType = type [
-//     contextId = Int64.Type,
-//     alias = Text.Type,
-//     reportingBenefits = { Text.Type }
-// ];
+PremiumReportingConnector.GetContextNavTable = (contextId as text) as table =>
+    let
+        _table = #table(
+            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
+            {{ "Unique users per product name", "uupn", PremiumReportingConnector.GetUniqueUsersPerProductName(contextId), "Table", "Table", true }}
+        )
+    in
+        Table.ToNavigationTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
-// ContextsType = type { ContextType };
+PremiumReportingConnector.GetUniqueUsersPerProductName = (contextId as text) as table =>
+    let
+        usageQuery = PremiumReportingConnector.RunUsageQuery(contextId, { "productName" }, { "uniqueUsers" }, "", "productName ASC"),
+        usageQueryResults = PremiumReportingConnector.GetUsageQueryResults(usageQuery[id])
+    in
+        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
 
 PremiumReportingConnector.GetContexts = () =>
     let
@@ -125,43 +134,23 @@ PremiumReportingConnector.GetContexts = () =>
         response = Web.Contents(url),
         json = Json.Document(response)
     in
-        json; // Value.ReplaceType(json, ContextsType)
+        json;
 
-// UsageQueryType = type [
-//     id = Text.Type,
-//     status = Text.Type,
-//     optional startTime = Int64.Type,
-//     optional columns = { any },
-//     optional rows = { any },
-//     optional pagination = any
-// ];
-
-PremiumReportingConnector.RunUsageQuery = (_contextId as text) =>
+PremiumReportingConnector.RunUsageQuery = (_contextId as text, _fields as list, _metrics as list, _where as text, _orderBy as text) =>
     let
         url = "https://developer.api.autodesk.com/insights/v1/usage-queries?contextId=" & _contextId,
         headers = [#"Content-Type" = "application/json"],
-        payload = Json.FromValue([ // TODO: make configurable
-            fields = {
-                "productName"
-            },
-            metrics = {
-                "uniqueUsers"
-            },
-            where = "",
-            orderBy = "productName ASC",
+        payload = Json.FromValue([
+            fields = _fields,
+            metrics = _metrics,
+            where = _where,
+            orderBy = _orderBy,
             contextId = _contextId
         ]),
         response = Web.Contents(url, [ Headers = headers, Content = payload ]),
         json = Json.Document(response)
     in
-        json; // Value.ReplaceType(json, UsageQueryType)
-
-// UsageQueryResultsType = type [
-//     id = Text.Type,
-//     status = Text.Type,
-//     columns = { Text.Type },
-//     rows = { any }
-// ];
+        json;
 
 PremiumReportingConnector.GetUsageQueryResults = (usageQueryId as text) =>
     let
@@ -188,4 +177,27 @@ PremiumReportingConnector.GetUsageQueryResults = (usageQueryId as text) =>
                 result,
         json = Poll(10, 5, 0)
     in
-        json; // Value.ReplaceType(json, UsageQueryResultsType)
+        json;
+
+Table.ToNavigationTable = (
+    _table as table,
+    keyColumns as list,
+    nameColumn as text,
+    dataColumn as text,
+    itemKindColumn as text,
+    itemNameColumn as text,
+    isLeafColumn as text
+) as table =>
+    let
+        tableType = Value.Type(_table),
+        newTableType = Type.AddTableKey(tableType, keyColumns, true) meta 
+        [
+            NavigationTable.NameColumn = nameColumn, 
+            NavigationTable.DataColumn = dataColumn,
+            NavigationTable.ItemKindColumn = itemKindColumn, 
+            Preview.DelayColumn = itemNameColumn, 
+            NavigationTable.IsLeafColumn = isLeafColumn
+        ],
+        navigationTable = Value.ReplaceType(_table, newTableType)
+    in
+        navigationTable;

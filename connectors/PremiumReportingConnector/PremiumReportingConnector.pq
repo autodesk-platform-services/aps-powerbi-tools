@@ -1,10 +1,6 @@
 [Version = "0.0.1"]
 section PremiumReportingConnector;
 
-SECRETS = Json.Document(Extension.Contents("secrets.json"));
-REDIRECT_URI = "https://oauth.powerbi.com/views/oauthredirect.html";
-PAGE_SIZE = 512;
-
 [DataSource.Kind = "PremiumReportingConnector", Publish = "PremiumReportingConnector.Publish"]
 shared PremiumReportingConnector.Contents = () =>
     let
@@ -14,79 +10,17 @@ shared PremiumReportingConnector.Contents = () =>
             List.Transform(contexts, each { _[alias], _[contextId], PremiumReportingConnector.GetContextNavTable(_[contextId]), "View", "View", false })
         )
     in
-        Table.ToNavigationTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
+        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
 PremiumReportingConnector = [
     Authentication = [
         OAuth = [
-            StartLogin = StartLogin,
-            FinishLogin = FinishLogin,
-            Refresh = RefreshToken
+            StartLogin = OAuth[StartLogin],
+            FinishLogin = OAuth[FinishLogin],
+            Refresh = OAuth[RefreshToken]
         ]
     ]
 ];
-
-StartLogin = (dataSourcePath, state, display) =>
-    let
-        query = [
-            response_type = "code",
-            client_id = SECRETS[APS_CLIENT_ID],
-            scope = "data:read data:write",
-            redirect_uri = REDIRECT_URI,
-            state = state
-        ],
-        url = "https://developer.api.autodesk.com/authentication/v2/authorize?" & Uri.BuildQueryString(query)
-    in
-        [
-            LoginUri = url,
-            CallbackUri = REDIRECT_URI,
-            Context = null,
-            WindowWidth = 600,
-            WindowHeight = 600
-        ];
-
-FinishLogin = (context, callbackUri, state) => let parts = Uri.Parts(callbackUri)[Query] in TokenMethod(parts[code]);
-
-TokenMethod = (code) =>
-    let
-        query = [
-            grant_type = "authorization_code",
-            code = code,
-            redirect_uri = REDIRECT_URI
-        ],
-        response = Web.Contents(
-            "https://developer.api.autodesk.com/authentication/v2/token",
-            [
-                Content = Text.ToBinary(Uri.BuildQueryString(query)),
-                Headers = [
-                    #"Content-Type" = "application/x-www-form-urlencoded",
-                    #"Accept" = "application/json",
-                    #"Authorization" = "Basic " & Binary.ToText(Text.ToBinary(SECRETS[APS_CLIENT_ID] & ":" & SECRETS[APS_CLIENT_SECRET]), BinaryEncoding.Base64)
-                ]
-            ]
-        )
-    in
-        Json.Document(response);
-
-RefreshToken = (dataSourcePath, refreshToken) =>
-    let
-        query = [
-            grant_type = "refresh_token",
-            refresh_token = refreshToken
-        ],
-        response = Web.Contents(
-            "https://developer.api.autodesk.com/authentication/v2/token",
-            [
-                Content = Text.ToBinary(Uri.BuildQueryString(query)),
-                Headers = [
-                    #"Content-Type" = "application/x-www-form-urlencoded",
-                    #"Accept" = "application/json",
-                    #"Authorization" = "Basic " & Binary.ToText(Text.ToBinary(SECRETS[APS_CLIENT_ID] & ":" & SECRETS[APS_CLIENT_SECRET]), BinaryEncoding.Base64)
-                ]
-            ]
-        )
-    in
-        Json.Document(response);
 
 PremiumReportingConnector.Publish = [
     Beta = true,
@@ -119,7 +53,7 @@ PremiumReportingConnector.GetContextNavTable = (contextId as text) as table =>
             {{ "Unique users per product name", "uupn", PremiumReportingConnector.GetUniqueUsersPerProductName(contextId), "Table", "Table", true }}
         )
     in
-        Table.ToNavigationTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
+        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
 PremiumReportingConnector.GetUniqueUsersPerProductName = (contextId as text) as table =>
     let
@@ -179,25 +113,16 @@ PremiumReportingConnector.GetUsageQueryResults = (usageQueryId as text) =>
     in
         json;
 
-Table.ToNavigationTable = (
-    _table as table,
-    keyColumns as list,
-    nameColumn as text,
-    dataColumn as text,
-    itemKindColumn as text,
-    itemNameColumn as text,
-    isLeafColumn as text
-) as table =>
+//
+// Load common library functions
+//
+// TEMPORARY WORKAROUND until we're able to reference other M modules
+Extension.LoadFunction = (name as text) =>
     let
-        tableType = Value.Type(_table),
-        newTableType = Type.AddTableKey(tableType, keyColumns, true) meta 
-        [
-            NavigationTable.NameColumn = nameColumn, 
-            NavigationTable.DataColumn = dataColumn,
-            NavigationTable.ItemKindColumn = itemKindColumn, 
-            Preview.DelayColumn = itemNameColumn, 
-            NavigationTable.IsLeafColumn = isLeafColumn
-        ],
-        navigationTable = Value.ReplaceType(_table, newTableType)
+        binary = Extension.Contents(name), asText = Text.FromBinary(binary)
     in
-        navigationTable;
+        Expression.Evaluate(asText, #shared);
+
+NavigationTable = Extension.LoadFunction("NavigationTable.pqm");
+NavigationTable.FromTable = NavigationTable[FromTable];
+OAuth = Extension.LoadFunction("OAuth.pqm");

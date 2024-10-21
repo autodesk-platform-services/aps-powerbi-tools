@@ -8,14 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <MezContent Include="PremiumReportingConnector.pq" />
-    <MezContent Include="PremiumReportingConnector16.png" />
-    <MezContent Include="PremiumReportingConnector20.png" />
-    <MezContent Include="PremiumReportingConnector24.png" />
-    <MezContent Include="PremiumReportingConnector32.png" />
-    <MezContent Include="PremiumReportingConnector40.png" />
-    <MezContent Include="PremiumReportingConnector48.png" />
-    <MezContent Include="PremiumReportingConnector64.png" />
-    <MezContent Include="PremiumReportingConnector80.png" />
+    <MezContent Include="*.pqm" />
+    <MezContent Include="PremiumReportingConnector*.png" />
     <MezContent Include="resources.resx" />
     <MezContent Include="secrets.json" />
   </ItemGroup>

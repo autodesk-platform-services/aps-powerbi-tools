@@ -1,6 +1,10 @@
 # APS Premium Reporting Connector
 
-Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility) for [Premium Reporting API](https://aps.autodesk.com/developer/overview/premium-reporting-api).
+Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility) for accessing Autodesk product usage data using [Premium Reporting API](https://aps.autodesk.com/developer/overview/premium-reporting-api).
+
+## Usage
+
+TODO: add video
 
 ## Development
 
@@ -11,7 +15,7 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 - [Power Query SDK](https://learn.microsoft.com/en-us/power-query/install-sdk)
 - [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (in case you want to build the connector manually)
 
-### Running locally
+### Testing
 
 - Clone this repository
 - Create a _secrets.json_ file in the project folder, and populate it with your APS application client ID and secret:
@@ -31,8 +35,8 @@ actions such as _Evaluate current file_ or _Run TestConnection function_
 
 ![Set credential](./docs/set-credential.png)
 
-- Open the [PremiumReportingConnector.query.pq](./PremiumReportingConnector.query.pq) file, and add your own design URN and region ("US" or "EMEA")
-- Run the data connector using  _Power Query SDK_, for example, by clicking the _Evaluate current file_ option in Visual Studio Code
+- Open the [PremiumReportingConnector.query.pq](./PremiumReportingConnector.query.pq) file
+- Run the test query using  _Power Query SDK_, for example, by clicking the _Evaluate current file_ option in Visual Studio Code
 
 ### Publishing
 

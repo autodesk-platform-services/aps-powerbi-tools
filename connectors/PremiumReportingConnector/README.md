@@ -4,7 +4,7 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 
 ## Usage
 
-TODO: add video
+[![Showcase](https://img.youtube.com/vi/lVhLbYZpWIY/0.jpg)](https://www.youtube.com/watch?v=lVhLbYZpWIY)
 
 ## Development
 

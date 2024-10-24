@@ -11,7 +11,7 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 ### Prerequisites
 
 - [APS app credentials](https://forge.autodesk.com/en/docs/oauth/v2/tutorials/create-app)
-  - [Provision access to ACC or BIM360](https://tutorials.autodesk.io/#provision-access-in-other-products)
+- As per the [documentation](https://aps.autodesk.com/en/docs/insights/v1/tutorials/queries/), you must be a _Premium Team admin_
 - [Power Query SDK](https://learn.microsoft.com/en-us/power-query/install-sdk)
 - [.NET 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (in case you want to build the connector manually)
 

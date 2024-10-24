@@ -36,11 +36,13 @@ If you don't want to build your own web service, consider using the [APS Shares 
 
 > If you see an error saying "Can't contact visual server", open a new tab in your browser, navigate to https://localhost:8080/assets, and authorize your browser to use this address.
 
-- With the visual selected, switch to the _Formatting_ tab, and enter the _Access Token Endpoint_ and _URN_ of your design (see the _FAQ_ section below for more details about _URN_ and _GUID_ values)
+- With the visual selected, switch to the _Format your visual_ tab, and add your authentication endpoint URL to the _Access Token Endpoint_ input
 
 ![Add token endpoint](./docs/add-token-endpoint.png)
 
-- To enable cross-selection, drag & drop the column of your data containing external IDs into the _External ID_ bucket
+- Drag & drop the columns from your data that represent the design URNs and element IDs to the _Design URNs & Element IDs_ bucket
+
+![Add design URNs and element IDs](./docs/add-element-ids.png)
 
 ### Publish
 

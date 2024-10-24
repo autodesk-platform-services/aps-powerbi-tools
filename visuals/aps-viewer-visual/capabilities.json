@@ -1,22 +1,21 @@
 {
     "dataRoles": [
         {
-            "displayName": "Design URNs",
-            "name": "urns",
-            "kind": "Grouping"
-        },
-        {
-            "displayName": "Element IDs",
+            "displayName": "Design URNs & Element IDs",
             "name": "elementIds",
             "kind": "Grouping"
         }
     ],
     "dataViewMappings": [
         {
+            "conditions": [
+                {
+                    "elementIds": { "min": 1, "max": 2 }
+                }
+            ],
             "table": {
                 "rows": {
                     "select": [
-                        {"for": { "in": "urns" }},
                         {"for": { "in": "elementIds" }}
                     ]
                 }

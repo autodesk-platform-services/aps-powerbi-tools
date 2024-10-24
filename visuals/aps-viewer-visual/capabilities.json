@@ -1,9 +1,26 @@
 {
     "dataRoles": [
         {
-            "displayName": "External ID",
-            "name": "externalIds",
+            "displayName": "Design URNs",
+            "name": "urns",
             "kind": "Grouping"
+        },
+        {
+            "displayName": "Element IDs",
+            "name": "elementIds",
+            "kind": "Grouping"
+        }
+    ],
+    "dataViewMappings": [
+        {
+            "table": {
+                "rows": {
+                    "select": [
+                        {"for": { "in": "urns" }},
+                        {"for": { "in": "elementIds" }}
+                    ]
+                }
+            }
         }
     ],
     "objects": {
@@ -15,33 +32,8 @@
                     }
                 }
             }
-        },
-        "design": {
-            "properties": {
-                "urn": {
-                    "type": {
-                        "text": true
-                    }
-                },
-                "guid": {
-                    "type": {
-                        "text": true
-                    }
-                }
-            }
         }
     },
-    "dataViewMappings": [
-        {
-            "table": {
-                "rows": {
-                    "for": {
-                        "in": "externalIds"
-                    }
-                }
-            }
-        }
-    ],
     "privileges": [
         {
             "name": "WebAccess",

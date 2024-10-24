@@ -28,11 +28,12 @@ export class Visual implements IVisual {
 
     // Visual inputs
     private accessTokenEndpoint: string = '';
-    private urn: string = '';
-    private guid: string = '';
 
     // Viewer runtime
     private viewer: Autodesk.Viewing.GuiViewer3D = null;
+    private urn: string = '';
+    private guid: string = '';
+    private externalIds: string[] = [];
     private model: Autodesk.Viewing.Model = null;
     private idMapping: IdMapping = null;
 
@@ -56,8 +57,8 @@ export class Visual implements IVisual {
      */
     public async update(options: VisualUpdateOptions): Promise<void> {
         // this.logVisualUpdateOptions(options);
-        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualSettingsModel, options.dataViews[0]);
 
+        this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualSettingsModel, options.dataViews[0]);
         const { accessTokenEndpoint } = this.formattingSettings.viewerCard;
         if (accessTokenEndpoint.value !== this.accessTokenEndpoint) {
             this.accessTokenEndpoint = accessTokenEndpoint.value;
@@ -66,22 +67,28 @@ export class Visual implements IVisual {
             }
         }
 
-        const { urn, guid } = this.formattingSettings.designCard;
-        if (urn.value !== this.urn || guid.value !== this.guid) {
-            this.urn = urn.value;
-            this.guid = guid.value;
+        this.currentDataView = options.dataViews[0];
+        if (this.currentDataView.table?.rows?.length > 0) {
+            const rows = this.currentDataView.table.rows;
+            const urns = this.collectDesignUrns(this.currentDataView);
+            if (urns.length > 1) {
+                this.showNotification('Multiple design URNs detected. Only the first one will be displayed.');
+            }
+            if (urns[0] !== this.urn) {
+                this.urn = urns[0];
+                this.updateModel();
+            }
+            this.externalIds = rows.map(r => r[1].valueOf() as string);
+        } else {
+            this.urn = '';
+            this.externalIds = [];
             this.updateModel();
         }
 
-        if (options.dataViews.length > 0) {
-            this.currentDataView = options.dataViews[0];
-        }
-
-        if (this.viewer && this.idMapping && this.currentDataView) {
-            const externalIds = this.currentDataView.table.rows || [];
-            const isDataFilterApplied = this.currentDataView.metadata && (this.currentDataView.metadata as any).isDataFilterApplied;
-            if (externalIds.length > 0 && isDataFilterApplied) {
-                const dbids = await this.idMapping.getDbids(externalIds as unknown as string[]);
+        if (this.idMapping) {
+            const isDataFilterApplied = this.currentDataView.metadata?.isDataFilterApplied;
+            if (this.externalIds.length > 0 && isDataFilterApplied) {
+                const dbids = await this.idMapping.getDbids(this.externalIds);
                 this.viewer.isolate(dbids);
                 this.viewer.fitToView(dbids);
             } else {
@@ -192,7 +199,7 @@ export class Visual implements IVisual {
         const selectedExternalIds = await this.idMapping.getExternalIds(selectedDbids);
         const selectionIds: powerbi.extensibility.ISelectionId[] = [];
         for (const selectedExternalId of selectedExternalIds) {
-            const rowIndex = allExternalIds.findIndex(row => row[0] === selectedExternalId);
+            const rowIndex = allExternalIds.findIndex(row => row[1] === selectedExternalId);
             if (rowIndex !== -1) {
                 const selectionId = this.host.createSelectionIdBuilder()
                     .withTable(this.currentDataView.table, rowIndex)
@@ -201,6 +208,11 @@ export class Visual implements IVisual {
             }
         }
         this.selectionManager.select(selectionIds);
+    }
+
+    private collectDesignUrns(dataView: DataView): string[] {
+        let urns = new Set(dataView.table.rows.map(row => row[0].valueOf() as string));
+        return [...urns.values()];
     }
 
     private logVisualUpdateOptions(options: VisualUpdateOptions) {

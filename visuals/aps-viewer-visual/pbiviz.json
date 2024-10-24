@@ -1,11 +1,11 @@
 {
     "visual": {
         "name": "aps-viewer-visual",
-        "displayName": "APS Viewer Visual (0.0.8.0)",
+        "displayName": "APS Viewer Visual (0.0.9.0)",
         "guid": "aps_viewer_visual_a4f2990a03324cf79eb44f982719df44",
         "visualClassName": "Visual",
-        "version": "0.0.8.0",
-        "description": "Visual for displaying shared 2D/3D designs from Autodesk Platform Services.",
+        "version": "0.0.9.0",
+        "description": "Visual for previewing shared 2D/3D designs from Autodesk Platform Services.",
         "supportUrl": "https://github.com/autodesk-platform-services/aps-powerbi-tools",
         "gitHubUrl": "https://github.com/autodesk-platform-services/aps-powerbi-tools"
     },

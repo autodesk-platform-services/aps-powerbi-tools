@@ -19,28 +19,7 @@ class ViewerCard extends Card {
     slices: Array<Slice> = [this.accessTokenEndpoint];
 }
 
-class DesignCard extends Card {
-    urn = new formattingSettings.TextInput({
-        name: 'urn',
-        displayName: 'URN',
-        description: 'Base64-encoded URN of the design to load.',
-        placeholder: '',
-        value: ''
-    });
-    guid = new formattingSettings.TextInput({
-        name: 'guid',
-        displayName: 'GUID',
-        description: 'Optional viewable GUID. If not specified, the viewer will load the default viewable.',
-        placeholder: '',
-        value: ''
-    });
-    name: string = 'design';
-    displayName: string = 'Design';
-    slices: Array<Slice> = [this.urn, this.guid];
-}
-
 export class VisualSettingsModel extends Model {
     viewerCard = new ViewerCard();
-    designCard = new DesignCard();
-    cards = [this.viewerCard, this.designCard];
+    cards = [this.viewerCard];
 }

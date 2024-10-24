@@ -1,0 +1,21 @@
+{
+  "name": "ssa-auth-app",
+  "description": "Simple web application providing authentication for accessing project and design data in Autodesk Construction Cloud using Secure Service Accounts.",
+  "keywords": [
+    "autodesk-platform-services",
+    "service-account"
+  ],
+  "author": "Petr Broz <petr.broz@autodesk.com>",
+  "type": "module",
+  "bin": {
+    "create-service-account": "./tools/create-service-account.js"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "fastify": "^5.0.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

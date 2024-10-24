@@ -1,0 +1,67 @@
+let
+    SECRETS = Json.Document(Extension.Contents("secrets.json")),
+    REDIRECT_URI = "https://oauth.powerbi.com/views/oauthredirect.html",
+    StartLogin = (dataSourcePath, state, display) =>
+        let
+            query = [
+                response_type = "code",
+                client_id = SECRETS[APS_CLIENT_ID],
+                scope = "data:read",
+                redirect_uri = REDIRECT_URI,
+                state = state
+            ],
+            url = "https://developer.api.autodesk.com/authentication/v2/authorize?" & Uri.BuildQueryString(query)
+        in
+            [
+                LoginUri = url,
+                CallbackUri = REDIRECT_URI,
+                Context = null,
+                WindowWidth = 600,
+                WindowHeight = 600
+            ],
+    FinishLogin = (context, callbackUri, state) => let parts = Uri.Parts(callbackUri)[Query] in TokenMethod(parts[code]),
+    TokenMethod = (code) =>
+        let
+            query = [
+                grant_type = "authorization_code",
+                code = code,
+                redirect_uri = REDIRECT_URI
+            ],
+            response = Web.Contents(
+                "https://developer.api.autodesk.com/authentication/v2/token",
+                [
+                    Content = Text.ToBinary(Uri.BuildQueryString(query)),
+                    Headers = [
+                        #"Content-Type" = "application/x-www-form-urlencoded",
+                        #"Accept" = "application/json",
+                        #"Authorization" = "Basic " & Binary.ToText(Text.ToBinary(SECRETS[APS_CLIENT_ID] & ":" & SECRETS[APS_CLIENT_SECRET]), BinaryEncoding.Base64)
+                    ]
+                ]
+            )
+        in
+            Json.Document(response),
+    RefreshToken = (dataSourcePath, refreshToken) =>
+        let
+            query = [
+                grant_type = "refresh_token",
+                refresh_token = refreshToken
+            ],
+            response = Web.Contents(
+                "https://developer.api.autodesk.com/authentication/v2/token",
+                [
+                    Content = Text.ToBinary(Uri.BuildQueryString(query)),
+                    Headers = [
+                        #"Content-Type" = "application/x-www-form-urlencoded",
+                        #"Accept" = "application/json",
+                        #"Authorization" = "Basic " & Binary.ToText(Text.ToBinary(SECRETS[APS_CLIENT_ID] & ":" & SECRETS[APS_CLIENT_SECRET]), BinaryEncoding.Base64)
+                    ]
+                ]
+            )
+        in
+            Json.Document(response)
+in
+    [
+        StartLogin = StartLogin,
+        FinishLogin = FinishLogin,
+        RefreshToken = RefreshToken
+    ]

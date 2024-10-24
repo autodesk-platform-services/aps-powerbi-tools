@@ -4,6 +4,8 @@ Collection of tools for accessing [Autodesk Platform Services](https://aps.autod
 
 ![Screenshot](./screenshot.png)
 
+> For more information about the history of this project, check out the [slides from APS DevCon 2024](./APS-PowerBi-DevCon2024.pdf).
+
 There are many different ways in which report authors might want to access design data in APS, for example:
 
 - displaying designs in a viewer - some report authors may want to limit access to specific users only, while others may want the designs to be viewable by everyone

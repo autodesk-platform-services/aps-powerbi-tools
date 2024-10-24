@@ -1,10 +1,10 @@
 # APS Viewer Visual
 
-[Custom Power BI visual](https://powerbi.microsoft.com/en-us/developers/custom-visualization/) used to display 2D and 3D designs from [Autodesk Platform Services](https://aps.autodesk.com) in Power BI reports.
+[Custom visual](https://powerbi.microsoft.com/en-us/developers/custom-visualization/) for previewing 2D and 3D designs from [Autodesk Platform Services](https://aps.autodesk.com) in Power BI reports.
 
 ### How does it work?
 
-This custom visual relies on a separate web service that will be able to generate access tokens for the viewer. The response from the web service should be a JSON with the following structure:
+The viewer relies on an external web service to generate access tokens for accessing design data in Autodesk Platform Services. The response from the web service should be a JSON with the following structure:
 
 ```json
 {

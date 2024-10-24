@@ -13,7 +13,7 @@
     "powerbi-visuals-utils-formattingmodel": "6.0.0"
   },
   "devDependencies": {
-    "@types/forge-viewer": "^7.69.5",
+    "@types/forge-viewer": "^7.89.1",
     "@typescript-eslint/eslint-plugin": "^5.59.11",
     "eslint": "^8.42.0",
     "eslint-plugin-powerbi-visuals": "^0.8.1",

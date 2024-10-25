@@ -2,15 +2,7 @@
 section PremiumReportingConnector;
 
 [DataSource.Kind = "PremiumReportingConnector", Publish = "PremiumReportingConnector.Publish"]
-shared PremiumReportingConnector.Contents = () =>
-    let
-        contexts = PremiumReportingConnector.GetContexts(),
-        _table = #table(
-            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            List.Transform(contexts, each { _[alias], _[contextId], PremiumReportingConnector.GetContextNavTable(_[contextId]), "View", "View", false })
-        )
-    in
-        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
+shared PremiumReportingConnector.Contents = () => PremiumReportingConnector.GetContextsNavigationTable();
 
 PremiumReportingConnector = [
     Authentication = [
@@ -46,18 +38,38 @@ PremiumReportingConnector.Icons = [
     }
 ];
 
-PremiumReportingConnector.GetContextNavTable = (contextId as text) as table =>
+PremiumReportingConnector.GetContextsNavigationTable = () =>
     let
+        contexts = PremiumReportingConnector.GetContexts(),
         _table = #table(
             { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            {{ "Unique users per product name", "uupn", PremiumReportingConnector.GetUniqueUsersPerProductName(contextId), "Table", "Table", true }}
+            List.Transform(contexts, each { _[alias], _[contextId], PremiumReportingConnector.GetUsageQueriesNavigationTable(_[contextId]), "View", "View", false })
         )
     in
         NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
-PremiumReportingConnector.GetUniqueUsersPerProductName = (contextId as text) as table =>
+PremiumReportingConnector.GetUsageQueriesNavigationTable = (contextId as text) as table =>
+    let
+        _table = #table(
+            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
+            {
+                { "Unique users per product", "uup", PremiumReportingConnector.GetUniqueUsersPerProduct(contextId), "Function", "Function", true },
+                { "Unique days per product and customer", "udpc", PremiumReportingConnector.GetUniqueDaysPerProductAndCustomer(contextId), "Function", "Function", true }
+            }
+        )
+    in
+        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
+
+PremiumReportingConnector.GetUniqueUsersPerProduct = (contextId as text) as table =>
     let
         usageQuery = PremiumReportingConnector.RunUsageQuery(contextId, { "productName" }, { "uniqueUsers" }, "", "productName ASC"),
+        usageQueryResults = PremiumReportingConnector.GetUsageQueryResults(usageQuery[id])
+    in
+        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+
+PremiumReportingConnector.GetUniqueDaysPerProductAndCustomer = (contextId as text) as table =>
+    let
+        usageQuery = PremiumReportingConnector.RunUsageQuery(contextId, { "fullName", "productName" }, { "earliestUsageDate", "latestUsageDate", "totalUniqueDays" }, "", ""),
         usageQueryResults = PremiumReportingConnector.GetUsageQueryResults(usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);

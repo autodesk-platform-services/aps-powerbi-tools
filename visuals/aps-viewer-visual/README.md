@@ -2,7 +2,16 @@
 
 [Custom visual](https://powerbi.microsoft.com/en-us/developers/custom-visualization/) for previewing 2D and 3D designs from [Autodesk Platform Services](https://aps.autodesk.com) in Power BI reports.
 
-### How does it work?
+## Usage
+
+[![Showcase](https://img.youtube.com/vi/8wsA5sd4_Xc/0.jpg)](https://www.youtube.com/watch?v=8wsA5sd4_Xc)
+
+## Development
+
+### Prerequisites
+
+- [Set up your environment for developing Power BI visuals](https://learn.microsoft.com/en-us/power-bi/developer/visuals/environment-setup)
+    - Note: this project has been developed and tested with `pbiviz` version 5.4.x
 
 The viewer relies on an external web service to generate access tokens for accessing design data in Autodesk Platform Services. The response from the web service should be a JSON with the following structure:
 
@@ -15,14 +24,6 @@ The viewer relies on an external web service to generate access tokens for acces
 ```
 
 If you don't want to build your own web service, consider using the [APS Shares App](../../services/aps-shares-app/) application that's part of this repository.
-
-## Development
-
-### Prerequisites
-
-- [Set up your environment for developing Power BI visuals](https://learn.microsoft.com/en-us/power-bi/developer/visuals/environment-setup)
-    - Note: this project has been developed and tested with `pbiviz` version 5.4.x
-- Access to Autodesk Construction Cloud or BIM360 project with existing designs to load into the visual
 
 ### Running locally
 

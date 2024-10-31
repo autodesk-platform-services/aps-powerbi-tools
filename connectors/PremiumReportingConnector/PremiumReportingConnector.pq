@@ -2,7 +2,7 @@
 section PremiumReportingConnector;
 
 [DataSource.Kind = "PremiumReportingConnector", Publish = "PremiumReportingConnector.Publish"]
-shared PremiumReportingConnector.Contents = () => GetContextsNavigationTable();
+shared PremiumReportingConnector.Contents = Value.ReplaceType(PremiumReportingConnectorImpl, PremiumReportingConnectorType);
 
 PremiumReportingConnector = [
     Authentication = [
@@ -38,53 +38,99 @@ PremiumReportingConnector.Icons = [
     }
 ];
 
-GetContextsNavigationTable = () =>
+PremiumReportingConnectorImpl = (api as text, optional options as record) => GetContextsNavigationTable(api, options);
+
+// The function type should have the same parameters (names, primitive data types, required vs. option)
+// and names as the implementation it will be used for.
+PremiumReportingConnectorType = type function (
+    api as (type text meta [
+        Documentation.FieldCaption = "API",
+        Documentation.FieldDescription = "Backend API. Currently only 'Insights v1' is supported.",
+        // In this advanced example, each of the AllowedValues is a text value with
+        // additional metadata to set the caption. This allows for localized captions,
+        // as the generated M query will contain the text value. Note that in this case
+        // we use "Documentation.Caption" rather than "Documentation.FieldCaption".
+        Documentation.AllowedValues = {
+            "https://developer.api.autodesk.com/insights/v1" meta [ Documentation.Caption = "Insights v1" ]
+        }
+    ]),
+    // A data source "options" record is a common way to pass in advanced settings and allows the connector
+    // to add new settings without impacting backwards compatibility. The options record should be the final
+    // parameter of the function, marked as option, be named "options", and have a record type.
+    optional options as (
+        // The code below defines a new record type. Each field in the record type becomes an input field
+        // in the UI. Not all options record fields need to be documented, but anything included here should be
+        // considered part of the function contract (i.e. future changes should not impact backwards compatibility).
+        // For more information on defining record types, see: https://learn.microsoft.com/powerquery-m/m-spec-types#record-types
+        type nullable [
+            // Options record fields support the same Documentation.* meta fields as function parameters.
+            // All fields should be optional.
+            optional startDate = (type date meta [
+                Documentation.FieldCaption = "Start Date",
+                Documentation.FieldDescription = "Beginning of time range for which usage analytics are requested."
+            ]),
+            optional endDate = (type date meta [
+                Documentation.FieldCaption = "End Date",
+                Documentation.FieldDescription = "End of time range for which usage analytics are requested."
+            ])
+        ] meta [
+            // Connectors can provide their own label options parameter label, but in the future this will default
+            // to a localized equivalent of "Advanced options".
+            Documentation.FieldCaption = "Options"
+        ]
+    )
+) as table meta [
+    Documentation.Name = "APS Premium Reporting Connector",
+    Documentation.LongDescription = "Connect to Premium Reporting in Autodesk Platform Services."
+];
+
+GetContextsNavigationTable = (api as text, optional options as record) =>
     let
-        contexts = GetContexts(),
+        contexts = GetContexts(api),
         _table = #table(
             { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            List.Transform(contexts, each { _[alias], _[contextId], GetUsageQueriesNavigationTable(_[contextId]), "View", "View", false })
+            List.Transform(contexts, each { _[alias], _[contextId], GetUsageQueriesNavigationTable(api, _[contextId], options), "View", "View", false })
         )
     in
         NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
-GetUsageQueriesNavigationTable = (contextId as text) as table =>
+GetUsageQueriesNavigationTable = (api as text, contextId as text, optional options as record) as table =>
     let
         _table = #table(
             { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
             {
-                { "Unique users per product", "uup", GetUniqueUsersPerProduct(contextId), "Function", "Function", true },
-                { "Unique days per product and customer", "udpc", GetUniqueDaysPerProductAndCustomer(contextId), "Function", "Function", true }
+                { "Unique users per product", "uup", GetUniqueUsersPerProduct(api, contextId, options), "Function", "Function", true },
+                { "Unique days per product and customer", "udpc", GetUniqueDaysPerProductAndCustomer(api, contextId, options), "Function", "Function", true }
             }
         )
     in
         NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
-GetUniqueUsersPerProduct = (contextId as text) as table =>
+GetUniqueUsersPerProduct = (api as text, contextId as text, optional options as record) as table =>
     let
-        usageQuery = RunUsageQuery(contextId, { "productName" }, { "uniqueUsers" }, "", "productName ASC"),
-        usageQueryResults = GetUsageQueryResults(usageQuery[id])
+        _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
+        where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'" else "",
+        usageQuery = RunUsageQuery(api, contextId, { "productName" }, { "uniqueUsers" }, where, "productName ASC"),
+        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
 
-GetUniqueDaysPerProductAndCustomer = (contextId as text) as table =>
+GetUniqueDaysPerProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
-        usageQuery = RunUsageQuery(contextId, { "fullName", "productName" }, { "earliestUsageDate", "latestUsageDate", "totalUniqueDays" }, "", ""),
-        usageQueryResults = GetUsageQueryResults(usageQuery[id])
+        usageQuery = RunUsageQuery(api, contextId, { "fullName", "productName" }, { "earliestUsageDate", "latestUsageDate", "totalUniqueDays" }, "", ""),
+        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
 
-GetContexts = () =>
+GetContexts = (api as text) =>
     let
-        url = "https://developer.api.autodesk.com/insights/v1/contexts",
-        response = Web.Contents(url),
+        response = Web.Contents(api & "/contexts"),
         json = Json.Document(response)
     in
         json;
 
-RunUsageQuery = (_contextId as text, _fields as list, _metrics as list, _where as text, _orderBy as text) =>
+RunUsageQuery = (api as text, _contextId as text, _fields as list, _metrics as list, _where as text, _orderBy as text) =>
     let
-        url = "https://developer.api.autodesk.com/insights/v1/usage-queries?contextId=" & _contextId,
         headers = [#"Content-Type" = "application/json"],
         payload = Json.FromValue([
             fields = _fields,
@@ -93,17 +139,16 @@ RunUsageQuery = (_contextId as text, _fields as list, _metrics as list, _where a
             orderBy = _orderBy,
             contextId = _contextId
         ]),
-        response = Web.Contents(url, [ Headers = headers, Content = payload ]),
+        response = Web.Contents(api & "/usage-queries?contextId=" & _contextId, [ Headers = headers, Content = payload ]),
         json = Json.Document(response)
     in
         json;
 
-GetUsageQueryResults = (usageQueryId as text) =>
+GetUsageQueryResults = (api as text, usageQueryId as text) =>
     let
-        url = "https://developer.api.autodesk.com/insights/v1/usage-queries/" & usageQueryId,
         Poll = (maxAttempts as number, delayInSeconds as number, attempt as number) as any =>
             let
-                response = Web.Contents(url),
+                response = Web.Contents(api & "/usage-queries/" & usageQueryId),
                 json = Json.Document(response),
                 status = Record.FieldOrDefault(json, "status", ""),
                 result = if status = "COMPLETED" then

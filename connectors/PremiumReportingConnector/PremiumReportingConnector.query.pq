@@ -1,4 +1,4 @@
 let
-    result = PremiumReportingConnector.Contents()
+    result = PremiumReportingConnector.Contents("https://developer.api.autodesk.com/insights/v1")
 in
     result

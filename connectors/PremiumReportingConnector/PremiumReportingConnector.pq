@@ -20,7 +20,19 @@ PremiumReportingConnector.Publish = [
     ButtonText = {Extension.LoadString("ButtonTitle"), Extension.LoadString("ButtonHelp")},
     LearnMoreUrl = "https://github.com/autodesk-platform-services/aps-powerbi-tools",
     SourceImage = PremiumReportingConnector.Icons,
-    SourceTypeImage = PremiumReportingConnector.Icons
+    SourceTypeImage = PremiumReportingConnector.Icons,
+    Parameters = [
+        StartDate = [
+            Type = Date.Type,
+            DefaultValue = DateTime.From(DateTimeZone.SwitchZone(DateTimeZone.LocalNow(), 0)) - #duration(30,0,0,0),
+            Description = "Select the start date"
+        ],
+        EndDate = [
+            Type = Date.Type,
+            DefaultValue = DateTime.From(DateTimeZone.SwitchZone(DateTimeZone.LocalNow(), 0)),
+            Description = "Select the end date"
+        ]
+    ]
 ];
 
 PremiumReportingConnector.Icons = [
@@ -62,7 +74,10 @@ PremiumReportingConnector.GetUsageQueriesNavigationTable = (contextId as text) a
 
 PremiumReportingConnector.GetUniqueUsersPerProduct = (contextId as text) as table =>
     let
-        usageQuery = PremiumReportingConnector.RunUsageQuery(contextId, { "productName" }, { "uniqueUsers" }, "", "productName ASC"),
+        startDate = Extension.CurrentCredential()[StartDate],
+        endDate = Extension.CurrentCredential()[EndDate],
+        filter = "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'",
+        usageQuery = PremiumReportingConnector.RunUsageQuery(contextId, { "productName" }, { "uniqueUsers" }, filter, "productName ASC"),
         usageQueryResults = PremiumReportingConnector.GetUsageQueryResults(usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);

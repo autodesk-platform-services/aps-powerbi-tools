@@ -2,7 +2,7 @@
 section PremiumReportingConnector;
 
 [DataSource.Kind = "PremiumReportingConnector", Publish = "PremiumReportingConnector.Publish"]
-shared PremiumReportingConnector.Contents = () => PremiumReportingConnector.GetContextsNavigationTable();
+shared PremiumReportingConnector.Contents = () => GetContextsNavigationTable();
 
 PremiumReportingConnector = [
     Authentication = [
@@ -38,43 +38,43 @@ PremiumReportingConnector.Icons = [
     }
 ];
 
-PremiumReportingConnector.GetContextsNavigationTable = () =>
+GetContextsNavigationTable = () =>
     let
-        contexts = PremiumReportingConnector.GetContexts(),
+        contexts = GetContexts(),
         _table = #table(
             { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            List.Transform(contexts, each { _[alias], _[contextId], PremiumReportingConnector.GetUsageQueriesNavigationTable(_[contextId]), "View", "View", false })
+            List.Transform(contexts, each { _[alias], _[contextId], GetUsageQueriesNavigationTable(_[contextId]), "View", "View", false })
         )
     in
         NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
-PremiumReportingConnector.GetUsageQueriesNavigationTable = (contextId as text) as table =>
+GetUsageQueriesNavigationTable = (contextId as text) as table =>
     let
         _table = #table(
             { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
             {
-                { "Unique users per product", "uup", PremiumReportingConnector.GetUniqueUsersPerProduct(contextId), "Function", "Function", true },
-                { "Unique days per product and customer", "udpc", PremiumReportingConnector.GetUniqueDaysPerProductAndCustomer(contextId), "Function", "Function", true }
+                { "Unique users per product", "uup", GetUniqueUsersPerProduct(contextId), "Function", "Function", true },
+                { "Unique days per product and customer", "udpc", GetUniqueDaysPerProductAndCustomer(contextId), "Function", "Function", true }
             }
         )
     in
         NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
-PremiumReportingConnector.GetUniqueUsersPerProduct = (contextId as text) as table =>
+GetUniqueUsersPerProduct = (contextId as text) as table =>
     let
-        usageQuery = PremiumReportingConnector.RunUsageQuery(contextId, { "productName" }, { "uniqueUsers" }, "", "productName ASC"),
-        usageQueryResults = PremiumReportingConnector.GetUsageQueryResults(usageQuery[id])
+        usageQuery = RunUsageQuery(contextId, { "productName" }, { "uniqueUsers" }, "", "productName ASC"),
+        usageQueryResults = GetUsageQueryResults(usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
 
-PremiumReportingConnector.GetUniqueDaysPerProductAndCustomer = (contextId as text) as table =>
+GetUniqueDaysPerProductAndCustomer = (contextId as text) as table =>
     let
-        usageQuery = PremiumReportingConnector.RunUsageQuery(contextId, { "fullName", "productName" }, { "earliestUsageDate", "latestUsageDate", "totalUniqueDays" }, "", ""),
-        usageQueryResults = PremiumReportingConnector.GetUsageQueryResults(usageQuery[id])
+        usageQuery = RunUsageQuery(contextId, { "fullName", "productName" }, { "earliestUsageDate", "latestUsageDate", "totalUniqueDays" }, "", ""),
+        usageQueryResults = GetUsageQueryResults(usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
 
-PremiumReportingConnector.GetContexts = () =>
+GetContexts = () =>
     let
         url = "https://developer.api.autodesk.com/insights/v1/contexts",
         response = Web.Contents(url),
@@ -82,7 +82,7 @@ PremiumReportingConnector.GetContexts = () =>
     in
         json;
 
-PremiumReportingConnector.RunUsageQuery = (_contextId as text, _fields as list, _metrics as list, _where as text, _orderBy as text) =>
+RunUsageQuery = (_contextId as text, _fields as list, _metrics as list, _where as text, _orderBy as text) =>
     let
         url = "https://developer.api.autodesk.com/insights/v1/usage-queries?contextId=" & _contextId,
         headers = [#"Content-Type" = "application/json"],
@@ -98,7 +98,7 @@ PremiumReportingConnector.RunUsageQuery = (_contextId as text, _fields as list, 
     in
         json;
 
-PremiumReportingConnector.GetUsageQueryResults = (usageQueryId as text) =>
+GetUsageQueryResults = (usageQueryId as text) =>
     let
         url = "https://developer.api.autodesk.com/insights/v1/usage-queries/" & usageQueryId,
         Poll = (maxAttempts as number, delayInSeconds as number, attempt as number) as any =>

@@ -99,25 +99,55 @@ GetUsageQueriesNavigationTable = (api as text, contextId as text, optional optio
         _table = #table(
             { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
             {
-                { "Unique users per product", "uup", GetUniqueUsersPerProduct(api, contextId, options), "Function", "Function", true },
-                { "Unique days per product and customer", "udpc", GetUniqueDaysPerProductAndCustomer(api, contextId, options), "Function", "Function", true }
+                { "Latest usage date per product and customer", "q1", GetLatestUsageDateByProductAndCustomer(api, contextId, options), "Function", "Function", true },
+                { "Number of unique users per product and customer", "q2", GetUniqueUsersPerProductAndCustomer(api, contextId, options), "Function", "Function", true },
+                { "Number of unique days per product and customer", "q3", GetUniqueDaysPerProductAndCustomer(api, contextId, options), "Function", "Function", true },
+                { "Number of unique products used per customer", "q4", GetUniqueProductsPerCustomer(api, contextId, options), "Function", "Function", true },
+                { "Number of tokens used per flex product and customer", "q5", GetTokensPerProductAndCustomer(api, contextId, options), "Function", "Function", true }
             }
         )
     in
         NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
 
-GetUniqueUsersPerProduct = (api as text, contextId as text, optional options as record) as table =>
+GetLatestUsageDateByProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
+    let
+        usageQuery = RunUsageQuery(api, contextId, { "productName", "contextId", "fullName" }, { "latestUsageDate" }, "", ""),
+        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+    in
+        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+
+GetUniqueUsersPerProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
         _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
         where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'" else "",
-        usageQuery = RunUsageQuery(api, contextId, { "productName" }, { "uniqueUsers" }, where, "productName ASC"),
+        usageQuery = RunUsageQuery(api, contextId, { "productName", "contextId", "fullName" }, { "uniqueUsers" }, where, ""),
         usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
 
 GetUniqueDaysPerProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
-        usageQuery = RunUsageQuery(api, contextId, { "fullName", "productName" }, { "earliestUsageDate", "latestUsageDate", "totalUniqueDays" }, "", ""),
+        _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
+        where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'" else "",
+        usageQuery = RunUsageQuery(api, contextId, { "userName", "productName", "contextId" }, { "totalUniqueDays" }, where, ""),
+        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+    in
+        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+
+GetUniqueProductsPerCustomer = (api as text, contextId as text, optional options as record) as table =>
+    let
+        _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
+        where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'" else "",
+        usageQuery = RunUsageQuery(api, contextId, { "userName", "contextId" }, { "uniqueProducts" }, where, ""),
+        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+    in
+        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+
+GetTokensPerProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
+    let
+        _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
+        where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "' AND source = 'flex'" else "source = 'flex'",
+        usageQuery = RunUsageQuery(api, contextId, { "productName", "userName", "contextId" }, { "totalTokens" }, where, ""),
         usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
     in
         Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);

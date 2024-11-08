@@ -1,0 +1,78 @@
+let
+    Get = (url as text) as record =>
+        let
+            response = Web.Contents(url)
+        in
+            Json.Document(response),
+
+    GetHubs = () as list =>
+        let
+            json = Get("https://developer.api.autodesk.com/project/v1/hubs"),
+            hubs = json[data]
+        in
+            hubs,
+
+    GetProjects = (hubId as text) as list =>
+        let
+            GetPage = (pageNumber as number) as record => Get("https://developer.api.autodesk.com/project/v1/hubs/" & hubId & "/projects?page[number]=" & Number.ToText(pageNumber)),
+            Collate = (pageNumber as number, accumulatedList as list) as list =>
+                let
+                    result = GetPage(pageNumber),
+                    projects = result[data],
+                    newAccumulatedList = List.Combine({accumulatedList, projects})
+                in
+                    if List.Count(projects) > 0 then @Collate(pageNumber + 1, newAccumulatedList) else newAccumulatedList,
+            projects = Collate(0, {})
+        in
+            projects,
+
+    GetTopFolders = (hubId as text, projectId as text) as list =>
+        let
+            json = Get("https://developer.api.autodesk.com/project/v1/hubs/" & hubId & "/projects/" & projectId & "/topFolders"),
+            folders = json[data]
+        in
+            folders,
+
+    GetFolderContents = (projectId as text, folderId as text) as list =>
+        let
+            GetPage = (pageNumber as number) as record => Get("https://developer.api.autodesk.com/data/v1/projects/" & projectId & "/folders/" & folderId & "/contents?page[number]=" & Number.ToText(pageNumber)),
+            Collate = (pageNumber as number, accumulatedList as list) as list =>
+                let
+                    result = GetPage(pageNumber),
+                    contents = result[data],
+                    newAccumulatedList = List.Combine({accumulatedList, contents})
+                in
+                    if List.Count(contents) > 0 then @Collate(pageNumber + 1, newAccumulatedList) else newAccumulatedList,
+            contents = Collate(0, {})
+        in
+            contents,
+
+    GetItemVersions = (projectId as text, itemId as text) as list =>
+        let
+            GetPage = (pageNumber as number) as record => Get("https://developer.api.autodesk.com/data/v1/projects/" & projectId & "/items/" & itemId & "/versions?page[number]=" & Number.ToText(pageNumber)),
+            Collate = (pageNumber as number, accumulatedList as list) as list =>
+                let
+                    result = GetPage(pageNumber),
+                    versions = result[data],
+                    newAccumulatedList = List.Combine({accumulatedList, versions})
+                in
+                    if List.Count(versions) > 0 then @Collate(pageNumber + 1, newAccumulatedList) else newAccumulatedList,
+            versions = Collate(0, {})
+        in
+            versions,
+
+    GetVersionDetails = (projectId as text, versionId as text) as record =>
+        let
+            json = Get("https://developer.api.autodesk.com/data/v1/projects/" & projectId & "/versions/" & Uri.EscapeDataString(versionId)),
+            details = json[data]
+        in
+            details
+in
+    [
+        GetHubs = GetHubs,
+        GetProjects = GetProjects,
+        GetTopFolders = GetTopFolders,
+        GetFolderContents = GetFolderContents,
+        GetItemVersions = GetItemVersions,
+        GetVersionDetails = GetVersionDetails
+    ]

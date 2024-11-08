@@ -1,0 +1,49 @@
+let
+    GetModelViews = (urn as text, optional region as text) as list =>
+        let
+            url = "https://developer.api.autodesk.com/" & (if region = "EMEA" then "modelderivative/v2/regions/eu" else "modelderivative/v2") & "/designdata/" & urn & "/metadata",
+            response = Web.Contents(url),
+            json = Json.Document(response)
+        in
+            json[data][metadata],
+
+    GetModelTree = (urn as text, guid as text, optional region as text) as record =>
+        let
+            url = "https://developer.api.autodesk.com/" &  (if region = "EMEA" then "modelderivative/v2/regions/eu" else "modelderivative/v2") & "/designdata/" & urn & "/metadata/" & guid,
+            response = Web.Contents(url, [ ManualStatusHandling = {202}, IsRetry = true ]),
+            metadata = Value.Metadata(response),
+            json =
+                if metadata[Response.Status] = 202 then // TODO: retry
+                    error "Could not retrieve object tree. Request is being processed. Please try again later."
+                else
+                    Json.Document(response)
+        in
+            json[data][objects]{0},
+
+    GetModelProperties = (urn as text, guid as text, objectIds as list, optional region as text) as list =>
+        let
+            url = "https://developer.api.autodesk.com/" &  (if region = "EMEA" then "modelderivative/v2/regions/eu" else "modelderivative/v2") & "/designdata/" & urn & "/metadata/" & guid & "/properties:query",
+            headers = [#"Content-Type" = "application/json"],
+            payload = Json.FromValue([
+                pagination = [
+                    limit = List.Count(objectIds)
+                ],
+                query = [
+                    #"$in" = { "objectid" } & objectIds
+                ]
+            ]),
+            response = Web.Contents(url, [ ManualStatusHandling = {202}, IsRetry = true, Headers = headers, Content = payload ]),
+            metadata = Value.Metadata(response),
+            json =
+                if metadata[Response.Status] = 202 then // TODO: retry
+                    error "Could not retrieve properties. Request is being processed. Please try again later."
+                else
+                    Json.Document(response)
+        in
+            json[data][collection]
+in
+    [
+        GetModelViews = GetModelViews,
+        GetModelTree = GetModelTree,
+        GetModelProperties = GetModelProperties
+    ]

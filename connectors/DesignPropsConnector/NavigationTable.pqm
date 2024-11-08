@@ -12,8 +12,16 @@ let
             ],
             navigationTable = Value.ReplaceType(_table, newTableType)
         in
-            navigationTable
+            navigationTable,
+
+    FromList = (rows as list, transform as function) as table =>
+        let
+            _list = List.Transform(rows, transform),
+            _table = Table.FromRecords(_list)
+        in
+            FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf")
 in
     [
-        FromTable = FromTable
+        FromTable = FromTable,
+        FromList = FromList
     ]

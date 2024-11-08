@@ -86,7 +86,7 @@ RunUsageQuery = (contractNumber as text, _fields as list, _metrics as list, _usa
 
 GetUsageQueryResults = (contractNumber as text, queryId as text) as table =>
     let
-        CollectPages = (offset as number, limit as number, accumulatedTable as table) as table =>
+        Collate = (offset as number, limit as number, accumulatedTable as table) as table =>
             let
                 page = GetUsageQueryResultsPage(contractNumber, queryId, offset, limit),
                 _table = Table.FromRows(page[result][rows], page[result][columns]),
@@ -94,10 +94,10 @@ GetUsageQueryResults = (contractNumber as text, queryId as text) as table =>
                 newAccumulatedTable = Table.Combine({accumulatedTable, _table})
             in
                 if offset + limit < total then
-                    @CollectPages(offset + limit, limit, newAccumulatedTable)
+                    @Collate(offset + limit, limit, newAccumulatedTable)
                 else
                     newAccumulatedTable,
-        results = CollectPages(0, 100, #table({}, {}))
+        results = Collate(0, 100, #table({}, {}))
     in
         results;
 

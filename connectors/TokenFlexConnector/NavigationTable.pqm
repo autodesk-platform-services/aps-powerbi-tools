@@ -12,8 +12,14 @@ let
             ],
             navigationTable = Value.ReplaceType(_table, newTableType)
         in
-            navigationTable
+            navigationTable,
+
+    FromRecords = (records as list) as table => FromTable(Table.FromRecords(records), {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf"),
+    RecordType = type [ Name = text, Key = text, Data = any, ItemKind = text, ItemName = text, IsLeaf = logical ],
+    ListType = type { RecordType },
+    FromRecordsType = type function (records as ListType) as any
 in
     [
-        FromTable = FromTable
+        FromTable = FromTable,
+        FromRecords = Value.ReplaceType(FromRecords, FromRecordsType)
     ]

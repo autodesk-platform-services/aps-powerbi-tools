@@ -58,100 +58,31 @@ TokenFlexConnectorType = type function (
 
 GetContractsNavigationTable = (baseUrl as text, optional options as record) =>
     let
-        contracts = GetContracts(baseUrl),
-        _table = #table(
-            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            List.Transform(contracts, each { _[contractName], _[contractNumber], GetUsageQueriesNavigationTable(_[contractNumber], baseUrl, options), "View", "View", false })
-        )
+        contracts = TokenFlex.GetContracts(baseUrl),
+        treeNodes = List.Transform(contracts, each [
+            Name = _[contractName],
+            Key = _[contractNumber],
+            Data = GetUsageQueriesNavigationTable(_[contractNumber], baseUrl, options),
+            ItemKind = "View",
+            ItemName = "View",
+            IsLeaf = false
+        ])
     in
-        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
-
-GetContracts = (api as text) =>
-    let
-        response = Web.Contents(api & "/contract"),
-        json = Json.Document(response)
-    in
-        json;
+        NavigationTable.FromRecords(treeNodes);
 
 GetUsageQueriesNavigationTable = (contractNumber as text, baseUrl as text, optional options as record) as table =>
     let
-        _table = #table(
-            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            {
-                { "Unique users and tokens consumed per product and customer", "q1", #"Unique users and tokens consumed per product and customer"(contractNumber, baseUrl, options), "Function", "Function", true }
-            }
-        )
-    in
-        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
-
-#"Unique users and tokens consumed per product and customer" = (contractNumber as text, baseUrl as text, optional options as record) as table =>
-    let
-        query = RunUsageQuery(contractNumber, { "userName", "productName" }, { "uniqueUsers", "tokensConsumed" }, { "MANUAL_ADJUSTMENT", "MANUAL_CONSUMPTION" }, baseUrl, options),
-        results = GetUsageQueryResults(contractNumber, query[id], baseUrl)
-    in
-        results;
-
-RunUsageQuery = (contractNumber as text, _fields as list, _metrics as list, _usageCategory as list, baseUrl as text, optional options as record) =>
-    let
-        _options = options ?? [],
-        headers = [#"Content-Type" = "application/json"],
-        payload = Json.FromValue([
-            fields = _fields,
-            metrics = _metrics,
-            usageCategory = _usageCategory,
-            where = _options[where] ?? ""
-        ]),
-        response = Web.Contents(baseUrl & "/usage/" & contractNumber & "/query", [ Headers = headers, Content = payload ]),
-        json = Json.Document(response)
-    in
-        json;
-
-GetUsageQueryResults = (contractNumber as text, queryId as text, baseUrl as text) as table =>
-    let
-        Collate = (offset as number, limit as number, accumulatedTable as table) as table =>
+        GetUsage = (fields as list, metrics as list, usageCategory as list) as table =>
             let
-                page = GetUsageQueryResultsPage(contractNumber, queryId, baseUrl, offset, limit),
-                _table = Table.FromRows(page[result][rows], page[result][columns]),
-                total = page[result][total],
-                newAccumulatedTable = Table.Combine({accumulatedTable, _table})
+                query = TokenFlex.RunUsageQuery(contractNumber, fields, metrics, usageCategory, baseUrl, options)
             in
-                if offset + limit < total then
-                    @Collate(offset + limit, limit, newAccumulatedTable)
-                else
-                    newAccumulatedTable,
-        results = Collate(0, 100, #table({}, {}))
+                TokenFlex.GetUsageQueryResults(contractNumber, query[id], baseUrl),
+        queries = {
+            { "Unique users and tokens consumed per product and customer",  "q1",   { "userName", "productName" },  { "uniqueUsers", "tokensConsumed" },    { "MANUAL_ADJUSTMENT", "MANUAL_CONSUMPTION" } }
+        },
+        treeNodes = List.Transform(queries, each [ Name = _{0}, Key = _{1}, Data = GetUsage(_{2}, _{3}, _{4}), ItemKind = "Function", ItemName = "Function", IsLeaf = true ])
     in
-        results;
-
-GetUsageQueryResultsPage = (contractNumber as text, queryId as text, baseUrl as text, optional offset as number, optional limit as number) as record =>
-    let
-        queryParams = "offset=" & (Number.ToText(offset) ?? "0") & "&" & "limit=" & (Number.ToText(limit) ?? "100"),
-        url = baseUrl & "/usage/" & contractNumber & "/query/" & queryId & "?" & queryParams,
-        Poll = (maxAttempts as number, delayInSeconds as number, attempt as number) as any =>
-            let
-                response = Web.Contents(url),
-                json = Json.Document(response),
-                status = Record.FieldOrDefault(json, "status", ""),
-                result = if status = "DONE" then
-                    json
-                else if status = "FAILED" then
-                    error "Query failed"
-                else if status = "TIMEOUT" then
-                    error "Query timed out"
-                else if status = "EXPIRED" then
-                    error "Query expired"
-                else if attempt < maxAttempts then // status is either QUEUED or PROCESSING
-                    Function.InvokeAfter(
-                        () => @Poll(maxAttempts, delayInSeconds, attempt + 1),
-                        #duration(0, 0, 0, delayInSeconds)
-                    )
-                else
-                    error "Query timed out"
-            in
-                result,
-        result = Poll(10, 5, 0)
-    in
-        result;
+        NavigationTable.FromRecords(treeNodes);
 
 //
 // Load common library functions
@@ -164,5 +95,9 @@ Extension.LoadFunction = (name as text) =>
         Expression.Evaluate(asText, #shared);
 
 NavigationTable = Extension.LoadFunction("NavigationTable.pqm");
-NavigationTable.FromTable = NavigationTable[FromTable];
+NavigationTable.FromRecords = NavigationTable[FromRecords];
 OAuth = Extension.LoadFunction("OAuth.pqm");
+TokenFlex = Extension.LoadFunction("TokenFlex.pqm");
+TokenFlex.GetContracts = TokenFlex[GetContracts];
+TokenFlex.RunUsageQuery = TokenFlex[RunUsageQuery];
+TokenFlex.GetUsageQueryResults = TokenFlex[GetUsageQueryResults];

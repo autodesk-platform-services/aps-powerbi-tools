@@ -1,0 +1,70 @@
+let
+    GetContexts = (baseUrl as text) =>
+        let
+            response = Web.Contents(baseUrl & "/contexts")
+        in
+            Json.Document(response),
+
+    RunUsageQuery = (_contextId as text, _fields as list, _metrics as list, baseUrl as text, optional options as record) as record =>
+        let
+            _options = options ?? [],
+            headers = [#"Content-Type" = "application/json"],
+            payload = Json.FromValue([
+                fields = _fields,
+                metrics = _metrics,
+                where = _options[where] ?? "",
+                // orderBy = _options[orderBy] ?? "",
+                contextId = _contextId
+            ]),
+            response = Web.Contents(baseUrl & "/usage-queries?contextId=" & _contextId, [ Headers = headers, Content = payload ])
+        in
+            Json.Document(response),
+
+    GetUsageQueryResults = (queryId as text, baseUrl as text) as table =>
+        let
+            Collate = (offset as number, limit as number, accumulatedTable as table) as table =>
+                let
+                    page = GetUsageQueryResultsPage(queryId, baseUrl, offset, limit),
+                    _table = Table.FromRows(page[rows], page[columns]),
+                    total = page[pagination][totalResults],
+                    newAccumulatedTable = Table.Combine({accumulatedTable, _table})
+                in
+                    if offset + limit < total then
+                        @Collate(offset + limit, limit, newAccumulatedTable)
+                    else
+                        newAccumulatedTable
+        in
+            Collate(0, 100, #table({}, {})),
+
+    GetUsageQueryResultsPage = (queryId as text, baseUrl as text, optional offset as number, optional limit as number) as record =>
+        let
+            queryParams = "offset=" & (Number.ToText(offset) ?? "0") & "&" & "limit=" & (Number.ToText(limit) ?? "100"),
+            url = baseUrl & "/usage-queries/" & queryId & "?" & queryParams,
+            Poll = (maxAttempts as number, delayInSeconds as number, attempt as number) as any =>
+                let
+                    response = Web.Contents(url),
+                    json = Json.Document(response),
+                    status = Record.FieldOrDefault(json, "status", ""),
+                    result = if status = "COMPLETED" then
+                        json
+                    else if status = "EXPIRED" then
+                        error "Query expired"
+                    else if status = "ERROR" then
+                        error "Query failed"
+                    else if attempt < maxAttempts then // status is either SUBMITTED or RUNNING
+                        Function.InvokeAfter(
+                            () => @Poll(maxAttempts, delayInSeconds, attempt + 1),
+                            #duration(0, 0, 0, delayInSeconds)
+                        )
+                    else
+                        error "Query timed out"
+                in
+                    result
+        in
+            Poll(10, 5, 0)
+in
+    [
+        GetContexts = GetContexts,
+        RunUsageQuery = RunUsageQuery,
+        GetUsageQueryResults = GetUsageQueryResults
+    ]

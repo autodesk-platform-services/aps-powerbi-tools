@@ -30,68 +30,73 @@ shared DesignPropsConnector.Contents = () => GetHubsNavigationTable();
 
 GetHubsNavigationTable = () as table =>
     let
-        hubs = DataManagement[GetHubs]()
-    in
-        NavigationTable[FromList](hubs, each [
+        hubs = DataManagement[GetHubs](),
+        treeNodes = List.Transform(hubs, each [
             Name = _[attributes][name],
             Key = _[id],
             Data = GetProjectsNavigationTable(_[id]),
             ItemKind = "DatabaseServer",
             ItemName = "Hub",
             IsLeaf = false
-        ]);
+        ])
+    in
+        NavigationTable.FromRecords(treeNodes);
 
 GetProjectsNavigationTable = (hubId as text) as table =>
     let
-        projects = DataManagement[GetProjects](hubId)
-    in
-        NavigationTable[FromList](projects, each [
+        projects = DataManagement[GetProjects](hubId),
+        treeNodes = List.Transform(projects, each [
             Name = _[attributes][name],
             Key = _[id],
             Data = GetTopFoldersNavigationTable(hubId, _[id]),
             ItemKind = "Database",
             ItemName = "Project",
             IsLeaf = false
-        ]);
+        ])
+    in
+        NavigationTable.FromRecords(treeNodes);
 
 GetTopFoldersNavigationTable = (hubId as text, projectId as text) as table =>
     let
-        folders = DataManagement[GetTopFolders](hubId, projectId)
-    in
-        NavigationTable[FromList](folders, each [
+        folders = DataManagement[GetTopFolders](hubId, projectId),
+        treeNodes = List.Transform(folders, each [
             Name = _[attributes][displayName],
             Key = _[id],
             Data = GetFolderContentsNavigationTable(projectId, _[id]),
             ItemKind = "Folder",
             ItemName = "Folder",
             IsLeaf = false
-        ]);
+        ])
+    in
+        NavigationTable.FromRecords(treeNodes);
 
 GetFolderContentsNavigationTable = (projectId as text, folderId as text) as table =>
     let
-        contents = DataManagement[GetFolderContents](projectId, folderId)
-    in
-        NavigationTable[FromList](contents, each [
+        contents = DataManagement[GetFolderContents](projectId, folderId),
+        treeNodes = List.Transform(contents, each [
             Name = _[attributes][displayName],
             Key = _[id],
             Data = if _[type] = "folders" then @GetFolderContentsNavigationTable(projectId, _[id]) else GetItemVersionsNavigationTable(projectId, _[id]),
             ItemKind =  if _[type] = "folders" then "Folder" else "Sheet",
             ItemName = if _[type] = "folders" then "Folder" else "Document",
             IsLeaf = false
-        ]);
+        ])
+    in
+        NavigationTable.FromRecords(treeNodes);
 
 GetItemVersionsNavigationTable = (projectId as text, itemId as text) as table =>
     let
-        versions = DataManagement[GetItemVersions](projectId, itemId)
-    in
-        NavigationTable[FromList](versions, each [
+        versions = DataManagement[GetItemVersions](projectId, itemId),
+        treeNodes = List.Transform(versions, each [
             Name = Text.Format("Version #[versionNumber] (#[createTime])"),
             Key = _[id],
             Data = GetDesignProperties(projectId, _[id]),
             ItemKind = "Table",
             ItemName = "Version",
             IsLeaf = true
-        ]);
+        ])
+    in
+        NavigationTable.FromRecords(treeNodes);
 
 GetDesignProperties = (projectId as text, versionId as text, optional region as text) as table =>
     let
@@ -141,6 +146,7 @@ Extension.LoadFunction = (name as text) =>
         Expression.Evaluate(asText, #shared);
 
 NavigationTable = Extension.LoadFunction("NavigationTable.pqm");
+NavigationTable.FromRecords = NavigationTable[FromRecords];
 OAuth = Extension.LoadFunction("OAuth.pqm");
 DataManagement = Extension.LoadFunction("DataManagement.pqm");
 ModelDerivative = Extension.LoadFunction("ModelDerivative.pqm");

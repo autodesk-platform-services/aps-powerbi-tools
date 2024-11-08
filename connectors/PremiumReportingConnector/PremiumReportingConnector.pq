@@ -58,131 +58,35 @@ PremiumReportingConnectorType = type function (
 
 GetContextsNavigationTable = (baseUrl as text, optional options as record) as table =>
     let
-        contexts = GetContexts(baseUrl),
-        _table = #table(
-            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            List.Transform(contexts, each { _[alias], _[contextId], GetUsageQueriesNavigationTable(_[contextId], baseUrl, options), "View", "View", false })
-        )
+        contexts = PremiumReporting.GetContexts(baseUrl),
+        treeNodes = List.Transform(contexts, each [
+            Name = _[alias],
+            Key = _[contextId],
+            Data = GetUsageQueriesNavigationTable(_[contextId], baseUrl, options),
+            ItemKind = "View",
+            ItemName = "View",
+            IsLeaf = false
+        ])
     in
-        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
-
-GetContexts = (baseUrl as text) =>
-    let
-        response = Web.Contents(baseUrl & "/contexts"),
-        json = Json.Document(response)
-    in
-        json;
+        NavigationTable.FromRecords(treeNodes);
 
 GetUsageQueriesNavigationTable = (contextId as text, baseUrl as text, optional options as record) as table =>
     let
-        _table = #table(
-            { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
-            {
-                { "Latest usage date per product and customer", "q1", #"Latest usage date per product and customer"(contextId, baseUrl, options), "Function", "Function", true },
-                { "Number of unique users per product and customer", "q2", #"Number of unique users per product and customer"(contextId, baseUrl, options), "Function", "Function", true },
-                { "Number of unique days per product and customer", "q3", #"Number of unique days per product and customer"(contextId, baseUrl, options), "Function", "Function", true },
-                { "Number of unique products used per customer", "q4", #"Number of unique products used per customer"(contextId, baseUrl, options), "Function", "Function", true },
-                { "Number of tokens used per flex product and customer", "q5", #"Number of tokens used per flex product and customer"(contextId, baseUrl, options), "Function", "Function", true }
-            }
-        )
-    in
-        NavigationTable.FromTable(_table, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf");
-
-#"Latest usage date per product and customer" = (contextId as text, baseUrl as text, optional options as record) as table =>
-    let
-        query = RunUsageQuery(contextId, { "productName", "contextId", "fullName" }, { "latestUsageDate" }, baseUrl, options),
-        results = GetUsageQueryResults(query[id], baseUrl)
-    in
-        results;
-
-#"Number of unique users per product and customer" = (contextId as text, baseUrl as text, optional options as record) as table =>
-    let
-        query = RunUsageQuery(contextId, { "productName", "contextId", "fullName" }, { "uniqueUsers" }, baseUrl, options),
-        results = GetUsageQueryResults(query[id], baseUrl)
-    in
-        results;
-
-#"Number of unique days per product and customer" = (contextId as text, baseUrl as text, optional options as record) as table =>
-    let
-        query = RunUsageQuery(contextId, { "userName", "productName", "contextId" }, { "totalUniqueDays" }, baseUrl, options),
-        results = GetUsageQueryResults(query[id], baseUrl)
-    in
-        results;
-
-#"Number of unique products used per customer" = (contextId as text, baseUrl as text, optional options as record) as table =>
-    let
-        query = RunUsageQuery(contextId, { "userName", "contextId" }, { "uniqueProducts" }, baseUrl, options),
-        results = GetUsageQueryResults(query[id], baseUrl)
-    in
-        results;
-
-#"Number of tokens used per flex product and customer" = (contextId as text, baseUrl as text, optional options as record) as table =>
-    let
-        query = RunUsageQuery(contextId, { "productName", "userName", "contextId" }, { "totalTokens" }, baseUrl, options),
-        results = GetUsageQueryResults(query[id], baseUrl)
-    in
-        results;
-
-RunUsageQuery = (_contextId as text, _fields as list, _metrics as list, baseUrl as text, optional options as record) as record =>
-    let
-        _options = options ?? [],
-        headers = [#"Content-Type" = "application/json"],
-        payload = Json.FromValue([
-            fields = _fields,
-            metrics = _metrics,
-            where = _options[where] ?? "",
-            // orderBy = _options[orderBy] ?? "",
-            contextId = _contextId
-        ]),
-        response = Web.Contents(baseUrl & "/usage-queries?contextId=" & _contextId, [ Headers = headers, Content = payload ]),
-        json = Json.Document(response)
-    in
-        json;
-
-GetUsageQueryResults = (queryId as text, baseUrl as text) as table =>
-    let
-        Collate = (offset as number, limit as number, accumulatedTable as table) as table =>
+        GetUsage = (fields as list, metrics as list) as table =>
             let
-                page = GetUsageQueryResultsPage(queryId, baseUrl, offset, limit),
-                _table = Table.FromRows(page[rows], page[columns]),
-                total = page[pagination][totalResults],
-                newAccumulatedTable = Table.Combine({accumulatedTable, _table})
+                query = PremiumReporting.RunUsageQuery(contextId, fields, metrics, baseUrl, options)
             in
-                if offset + limit < total then
-                    @Collate(offset + limit, limit, newAccumulatedTable)
-                else
-                    newAccumulatedTable,
-        results = Collate(0, 100, #table({}, {}))
+                PremiumReporting.GetUsageQueryResults(query[id], baseUrl),
+        queries = {
+            { "Latest usage date per product and customer",             "q1",   { "productName", "contextId", "fullName" }, { "latestUsageDate" } },
+            { "Number of unique users per product and customer",        "q2",   { "productName", "contextId", "fullName" }, { "uniqueUsers" } },
+            { "Number of unique days per product and customer",         "q3",   { "userName", "productName", "contextId" }, { "totalUniqueDays" } },
+            { "Number of unique products used per customer",            "q4",   { "userName", "contextId" },                { "uniqueProducts" } },
+            { "Number of tokens used per flex product and customer",    "q5",   { "productName", "userName", "contextId" }, { "totalTokens" } }
+        },
+        treeNodes = List.Transform(queries, each [ Name = _{0}, Key = _{1}, Data = GetUsage(_{2}, _{3}), ItemKind = "Function", ItemName = "Function", IsLeaf = true ])
     in
-        results;
-
-GetUsageQueryResultsPage = (queryId as text, baseUrl as text, optional offset as number, optional limit as number) as record =>
-    let
-        queryParams = "offset=" & (Number.ToText(offset) ?? "0") & "&" & "limit=" & (Number.ToText(limit) ?? "100"),
-        url = baseUrl & "/usage-queries/" & queryId & "?" & queryParams,
-        Poll = (maxAttempts as number, delayInSeconds as number, attempt as number) as any =>
-            let
-                response = Web.Contents(url),
-                json = Json.Document(response),
-                status = Record.FieldOrDefault(json, "status", ""),
-                result = if status = "COMPLETED" then
-                    json
-                else if status = "EXPIRED" then
-                    error "Query expired"
-                else if status = "ERROR" then
-                    error "Query failed"
-                else if attempt < maxAttempts then // status is either SUBMITTED or RUNNING
-                    Function.InvokeAfter(
-                        () => @Poll(maxAttempts, delayInSeconds, attempt + 1),
-                        #duration(0, 0, 0, delayInSeconds)
-                    )
-                else
-                    error "Query timed out"
-            in
-                result,
-        json = Poll(10, 5, 0)
-    in
-        json;
+        NavigationTable.FromRecords(treeNodes);
 
 //
 // Load common library functions
@@ -196,4 +100,9 @@ Extension.LoadFunction = (name as text) =>
 
 NavigationTable = Extension.LoadFunction("NavigationTable.pqm");
 NavigationTable.FromTable = NavigationTable[FromTable];
+NavigationTable.FromRecords = NavigationTable[FromRecords];
 OAuth = Extension.LoadFunction("OAuth.pqm");
+PremiumReporting = Extension.LoadFunction("PremiumReporting.pqm");
+PremiumReporting.GetContexts = PremiumReporting[GetContexts];
+PremiumReporting.RunUsageQuery = PremiumReporting[RunUsageQuery];
+PremiumReporting.GetUsageQueryResults = PremiumReporting[GetUsageQueryResults];

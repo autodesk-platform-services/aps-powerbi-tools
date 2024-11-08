@@ -1,0 +1,71 @@
+let
+    GetContracts = (api as text) =>
+        let
+            response = Web.Contents(api & "/contract")
+        in
+            Json.Document(response),
+
+    RunUsageQuery = (contractNumber as text, _fields as list, _metrics as list, _usageCategory as list, baseUrl as text, optional options as record) =>
+        let
+            _options = options ?? [],
+            headers = [#"Content-Type" = "application/json"],
+            payload = Json.FromValue([
+                fields = _fields,
+                metrics = _metrics,
+                usageCategory = _usageCategory,
+                where = _options[where] ?? ""
+            ]),
+            response = Web.Contents(baseUrl & "/usage/" & contractNumber & "/query", [ Headers = headers, Content = payload ])
+        in
+            Json.Document(response),
+
+    GetUsageQueryResults = (contractNumber as text, queryId as text, baseUrl as text) as table =>
+        let
+            Collate = (offset as number, limit as number, accumulatedTable as table) as table =>
+                let
+                    page = GetUsageQueryResultsPage(contractNumber, queryId, baseUrl, offset, limit),
+                    _table = Table.FromRows(page[result][rows], page[result][columns]),
+                    total = page[result][total],
+                    newAccumulatedTable = Table.Combine({accumulatedTable, _table})
+                in
+                    if offset + limit < total then
+                        @Collate(offset + limit, limit, newAccumulatedTable)
+                    else
+                        newAccumulatedTable
+        in
+            Collate(0, 100, #table({}, {})),
+
+    GetUsageQueryResultsPage = (contractNumber as text, queryId as text, baseUrl as text, optional offset as number, optional limit as number) as record =>
+        let
+            queryParams = "offset=" & (Number.ToText(offset) ?? "0") & "&" & "limit=" & (Number.ToText(limit) ?? "100"),
+            url = baseUrl & "/usage/" & contractNumber & "/query/" & queryId & "?" & queryParams,
+            Poll = (maxAttempts as number, delayInSeconds as number, attempt as number) as any =>
+                let
+                    response = Web.Contents(url),
+                    json = Json.Document(response),
+                    status = Record.FieldOrDefault(json, "status", ""),
+                    result = if status = "DONE" then
+                        json
+                    else if status = "FAILED" then
+                        error "Query failed"
+                    else if status = "TIMEOUT" then
+                        error "Query timed out"
+                    else if status = "EXPIRED" then
+                        error "Query expired"
+                    else if attempt < maxAttempts then // status is either QUEUED or PROCESSING
+                        Function.InvokeAfter(
+                            () => @Poll(maxAttempts, delayInSeconds, attempt + 1),
+                            #duration(0, 0, 0, delayInSeconds)
+                        )
+                    else
+                        error "Query timed out"
+                in
+                    result
+        in
+            Poll(10, 5, 0)
+in
+    [
+        GetContracts = GetContracts,
+        RunUsageQuery = RunUsageQuery,
+        GetUsageQueryResults = GetUsageQueryResults
+    ]

@@ -59,9 +59,9 @@ GetUsageQueriesNavigationTable = (contractNumber as text) as table =>
 #"Unique users and tokens consumed per product and customer" = (contractNumber as text) as table =>
     let
         usageQuery = RunUsageQuery(contractNumber, { "userName", "productName" }, { "uniqueUsers", "tokensConsumed" }, { "MANUAL_ADJUSTMENT", "MANUAL_CONSUMPTION" }, ""),
-        usageQueryResults = GetUsageQueryResults(contractNumber, usageQuery[id])
+        results = GetUsageQueryResults(contractNumber, usageQuery[id])
     in
-        Table.FromRows(usageQueryResults[result][rows], usageQueryResults[result][columns]);
+        results;
 
 GetContracts = () =>
     let
@@ -84,9 +84,24 @@ RunUsageQuery = (contractNumber as text, _fields as list, _metrics as list, _usa
     in
         json;
 
-GetUsageQueryResults = (contractNumber as text, queryId as text) => GetUsageQueryResultsPage(contractNumber, queryId, 0, 100); // TODO: collect all pages
+GetUsageQueryResults = (contractNumber as text, queryId as text) as table =>
+    let
+        CollectPages = (offset as number, limit as number, accumulatedTable as table) as table =>
+            let
+                page = GetUsageQueryResultsPage(contractNumber, queryId, offset, limit),
+                _table = Table.FromRows(page[result][rows], page[result][columns]),
+                total = page[result][total],
+                newAccumulatedTable = Table.Combine({accumulatedTable, _table})
+            in
+                if offset + limit < total then
+                    @CollectPages(offset + limit, limit, newAccumulatedTable)
+                else
+                    newAccumulatedTable,
+        results = CollectPages(0, 100, #table({}, {}))
+    in
+        results;
 
-GetUsageQueryResultsPage = (contractNumber as text, queryId as text, optional offset as number, optional limit as number) =>
+GetUsageQueryResultsPage = (contractNumber as text, queryId as text, optional offset as number, optional limit as number) as record =>
     let
         queryParams = "offset=" & (Number.ToText(offset) ?? "0") & "&" & "limit=" & (Number.ToText(limit) ?? "100"),
         url = "https://developer.api.autodesk.com/tokenflex/v1/usage/" & contractNumber & "/query/" & queryId & "?" & queryParams,
@@ -112,9 +127,9 @@ GetUsageQueryResultsPage = (contractNumber as text, queryId as text, optional of
                     error "Query timed out"
             in
                 result,
-        json = Poll(10, 5, 0)
+        result = Poll(10, 5, 0)
     in
-        json;
+        result;
 
 //
 // Load common library functions

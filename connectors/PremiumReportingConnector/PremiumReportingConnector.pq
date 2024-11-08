@@ -112,45 +112,45 @@ GetUsageQueriesNavigationTable = (api as text, contextId as text, optional optio
 GetLatestUsageDateByProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
         usageQuery = RunUsageQuery(api, contextId, { "productName", "contextId", "fullName" }, { "latestUsageDate" }, "", ""),
-        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+        results = GetUsageQueryResults(api, usageQuery[id])
     in
-        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+        results;
 
 GetUniqueUsersPerProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
         _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
         where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'" else "",
         usageQuery = RunUsageQuery(api, contextId, { "productName", "contextId", "fullName" }, { "uniqueUsers" }, where, ""),
-        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+        results = GetUsageQueryResults(api, usageQuery[id])
     in
-        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+        results;
 
 GetUniqueDaysPerProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
         _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
         where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'" else "",
         usageQuery = RunUsageQuery(api, contextId, { "userName", "productName", "contextId" }, { "totalUniqueDays" }, where, ""),
-        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+        results = GetUsageQueryResults(api, usageQuery[id])
     in
-        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+        results;
 
 GetUniqueProductsPerCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
         _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
         where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "'" else "",
         usageQuery = RunUsageQuery(api, contextId, { "userName", "contextId" }, { "uniqueProducts" }, where, ""),
-        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+        results = GetUsageQueryResults(api, usageQuery[id])
     in
-        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+        results;
 
 GetTokensPerProductAndCustomer = (api as text, contextId as text, optional options as record) as table =>
     let
         _options = options ?? [], startDate = _options[startDate]?, endDate = _options[endDate]?,
         where = if startDate <> null and endDate <> null then "usageDate >= '" & Date.ToText(startDate, "yyyy-MM-dd") & "' AND usageDate <= '" & Date.ToText(endDate, "yyyy-MM-dd") & "' AND source = 'flex'" else "source = 'flex'",
         usageQuery = RunUsageQuery(api, contextId, { "productName", "userName", "contextId" }, { "totalTokens" }, where, ""),
-        usageQueryResults = GetUsageQueryResults(api, usageQuery[id])
+        results = GetUsageQueryResults(api, usageQuery[id])
     in
-        Table.FromRows(usageQueryResults[rows], usageQueryResults[columns]);
+        results;
 
 GetContexts = (api as text) =>
     let
@@ -174,20 +174,39 @@ RunUsageQuery = (api as text, _contextId as text, _fields as list, _metrics as l
     in
         json;
 
-GetUsageQueryResults = (api as text, usageQueryId as text) =>
+GetUsageQueryResults = (api as text, queryId as text) as table =>
     let
+        Collate = (offset as number, limit as number, accumulatedTable as table) as table =>
+            let
+                page = GetUsageQueryResultsPage(api, queryId, offset, limit),
+                _table = Table.FromRows(page[rows], page[columns]),
+                total = page[pagination][totalResults],
+                newAccumulatedTable = Table.Combine({accumulatedTable, _table})
+            in
+                if offset + limit < total then
+                    @Collate(offset + limit, limit, newAccumulatedTable)
+                else
+                    newAccumulatedTable,
+        results = Collate(0, 100, #table({}, {}))
+    in
+        results;
+
+GetUsageQueryResultsPage = (api as text, queryId as text, optional offset as number, optional limit as number) as record =>
+    let
+        queryParams = "offset=" & (Number.ToText(offset) ?? "0") & "&" & "limit=" & (Number.ToText(limit) ?? "100"),
+        url = api & "/usage-queries/" & queryId & "?" & queryParams,
         Poll = (maxAttempts as number, delayInSeconds as number, attempt as number) as any =>
             let
-                response = Web.Contents(api & "/usage-queries/" & usageQueryId),
+                response = Web.Contents(url),
                 json = Json.Document(response),
                 status = Record.FieldOrDefault(json, "status", ""),
                 result = if status = "COMPLETED" then
                     json
-                else if status = "ERROR" then
-                    error "Query failed"
                 else if status = "EXPIRED" then
                     error "Query expired"
-                else if attempt < maxAttempts then 
+                else if status = "ERROR" then
+                    error "Query failed"
+                else if attempt < maxAttempts then // status is either SUBMITTED or RUNNING
                     Function.InvokeAfter(
                         () => @Poll(maxAttempts, delayInSeconds, attempt + 1),
                         #duration(0, 0, 0, delayInSeconds)

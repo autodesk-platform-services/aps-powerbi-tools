@@ -9,7 +9,7 @@
   <ItemGroup>
     <MezContent Include="PremiumReportingConnector.pq" />
     <MezContent Include="*.pqm" />
-    <MezContent Include="PremiumReportingConnector*.png" />
+    <MezContent Include="icons\*.png" />
     <MezContent Include="resources.resx" />
     <MezContent Include="secrets.json" />
   </ItemGroup>

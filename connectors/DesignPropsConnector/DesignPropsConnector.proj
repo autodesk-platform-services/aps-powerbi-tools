@@ -9,7 +9,7 @@
   <ItemGroup>
     <MezContent Include="DesignPropsConnector.pq" />
     <MezContent Include="*.pqm" />
-    <MezContent Include="DesignPropsConnector*.png" />
+    <MezContent Include="icons\*.png" />
     <MezContent Include="resources.resx" />
     <MezContent Include="secrets.json" />
   </ItemGroup>

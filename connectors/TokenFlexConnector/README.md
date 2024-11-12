@@ -12,12 +12,10 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 
 - [APS app credentials](https://aps.autodesk.com/en/docs/oauth/v2/tutorials/create-app)
 - As per the [documentation](https://aps.autodesk.com/en/docs/tokenflex/v1/developers_guide/authentication/), you must be an _Enterprise Team admin_
-- [Power Query SDK](https://learn.microsoft.com/en-us/power-query/install-sdk)
-- [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (in case you want to build the connector manually)
+- [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 
-### Testing
+### Building
 
-- Clone this repository
 - Create a _secrets.json_ file in the project folder, and populate it with your APS application client ID and secret:
 
 ```json
@@ -27,23 +25,34 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 }
 ```
 
-- Open your APS application on https://aps.autodesk.com/myapps, and add the following Callback URL to it: `https://oauth.powerbi.com/views/oauthredirect.html`
-- Open the project folder in Visual Studio or Visual Studio Code with the _Power Query SDK_ installed
-- Build the connector (*.mez file), either by typing `dotnet build` in the terminal, or by using one of the _Power Query SDK_ actions such as _Evaluate current file_ or _Run TestConnection function_
-- Use the _Power Query SDK_ to create new credentials, for example, by clicking the _Set credential_ option in Visual Studio Code
+- Register the following Callback URL to your APS application:
+
+```
+https://oauth.powerbi.com/views/oauthredirect.html
+```
+
+- Build the connector *.mez file (using bash or PowerShell)
+
+```bash
+dotnet build
+```
+
+### Deploying
+
+- Copy the generated *.mez file from the _bin/AnyCPU/Debug_ subfolder into Power BI Desktop application as explained [here](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility#custom-connectors)
+- When selecting data sources in Power BI Desktop, the custom connector will be available under _Other > APS Token Flex API Connector (Beta) (Custom)_
+
+> **IMPORTANT:** do not share the *.mez file with anyone as it includes the _secrets.json_ file with your APS application credentials.
+
+### Testing (Visual Studio Code)
+
+- Make sure you have the [Power Query SDK](https://learn.microsoft.com/en-us/power-query/install-sdk) extension installed
 
 ![Set credential](./docs/set-credential.png)
 
+- Create new credentials by clicking the _Set credential_ option (you will be prompted to log in with your Autodesk credentials)
 - Open the [TokenFlexConnector.query.pq](./TokenFlexConnector.query.pq) file
-- Run the test query using  _Power Query SDK_, for example, by clicking the _Evaluate current file_ option in Visual Studio Code
-
-### Publishing
-
-- Build the project using `dotnet build`
-- Import the generated *.mez file from the _bin_ subfolder into Power BI Desktop application as explained [here](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility#custom-connectors)
-- In Power BI Desktop, the custom connector will be available under the name _APS Token Flex API Connector_
-
-> **IMPORTANT:** the *.mez file should not be shared with 3rd parties as it includes the _secrets.json_ file with your APS application credentials.
+- Run the test query by clicking the _Evaluate current file_ option
 
 ## License
 

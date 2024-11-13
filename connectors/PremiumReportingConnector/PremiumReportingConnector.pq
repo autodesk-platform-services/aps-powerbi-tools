@@ -101,7 +101,7 @@ Extension.LoadFunction = (name as text) =>
 NavigationTable = Extension.LoadFunction("NavigationTable.pqm");
 NavigationTable.FromTable = NavigationTable[FromTable];
 NavigationTable.FromRecords = NavigationTable[FromRecords];
-OAuth = Extension.LoadFunction("OAuth.pqm");
+OAuth = Extension.LoadFunction("OAuthPKCE.pqm");
 PremiumReporting = Extension.LoadFunction("PremiumReporting.pqm");
 PremiumReporting.GetContexts = PremiumReporting[GetContexts];
 PremiumReporting.RunUsageQuery = PremiumReporting[RunUsageQuery];

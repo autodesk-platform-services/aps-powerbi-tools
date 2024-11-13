@@ -1,32 +1,37 @@
-// OAuth requirements:
-// 1. Create an APS application
+// PKCE OAuth requirements:
+// 1. Create a "Desktop, Mobile, Single-Page App" APS application
 // 2. Register the following Callback URL: "https://oauth.powerbi.com/views/oauthredirect.html"
-// 3. Create a _config.json_ with { "APS_CLIENT_ID": "your client id", "APS_CLIENT_SECRET": "your client secret" }
+// 3. Create a _config.json_ with { "APS_CLIENT_ID": "your client id" }
 
 let
     AUTH_BASE_URL = "https://developer.api.autodesk.com/authentication/v2/",
     REDIRECT_URI = "https://oauth.powerbi.com/views/oauthredirect.html",
     CONFIG = Json.Document(Extension.Contents("config.json")),
     APS_CLIENT_ID = if CONFIG[APS_CLIENT_ID]? = null then error "Missing APS_CLIENT_ID" else  CONFIG[APS_CLIENT_ID],
-    APS_CLIENT_SECRET = if CONFIG[APS_CLIENT_SECRET]? = null then error "Missing APS_CLIENT_SECRET" else  CONFIG[APS_CLIENT_SECRET],
     SCOPES = "data:read",
     WINDOW_WIDTH = 600,
     WINDOW_HEIGHT = 600,
 
+    Base64Encode = (s) => Text.Replace(Text.Replace(Text.BeforeDelimiter(Binary.ToText(s, BinaryEncoding.Base64), "="), "+", "-"), "/", "_"),
+
     StartLogin = (dataSourcePath, state, display) =>
         let
+            codeVerifier = Text.NewGuid() & Text.NewGuid(),
+            codeChallenge = Base64Encode(Crypto.CreateHash(CryptoAlgorithm.SHA256, Text.ToBinary(codeVerifier))),
             query = [
                 response_type = "code",
                 client_id = APS_CLIENT_ID,
                 scope = SCOPES,
                 redirect_uri = REDIRECT_URI,
-                state = state
+                state = state,
+                code_challenge_method = "S256",
+                code_challenge = codeChallenge
             ]
         in
             [
                 LoginUri = Uri.Combine(AUTH_BASE_URL, "authorize") & "?" & Uri.BuildQueryString(query),
                 CallbackUri = REDIRECT_URI,
-                Context = null,
+                Context = codeVerifier,
                 WindowWidth = WINDOW_WIDTH,
                 WindowHeight = WINDOW_HEIGHT
             ],
@@ -35,48 +40,35 @@ let
         let
             parts = Uri.Parts(callbackUri)[Query]
         in
-            TokenMethod(parts[code]),
+            TokenMethod(parts[code], "authorization_code", context),
 
-    TokenMethod = (code) =>
+    TokenMethod = (code, grantType, optional context) =>
         let
+            codeVerifier = if context <> null then [code_verifier = context] else [],
+            codeParameter = if grantType = "authorization_code" then [code = code] else [refresh_token = code],
             query = [
-                grant_type = "authorization_code",
-                code = code,
+                grant_type = grantType,
                 redirect_uri = REDIRECT_URI
             ],
-            response = Web.Contents(
-                Uri.Combine(AUTH_BASE_URL, "authorize"),
-                [
-                    Content = Text.ToBinary(Uri.BuildQueryString(query)),
-                    Headers = [
-                        #"Content-Type" = "application/x-www-form-urlencoded",
-                        #"Accept" = "application/json",
-                        #"Authorization" = "Basic " & Binary.ToText(Text.ToBinary(APS_CLIENT_ID & ":" & APS_CLIENT_SECRET), BinaryEncoding.Base64)
-                    ]
-                ]
-            )
-        in
-            Json.Document(response),
-
-    RefreshToken = (dataSourcePath, refreshToken) =>
-        let
-            query = [
-                grant_type = "refresh_token",
-                refresh_token = refreshToken
-            ],
+            queryString = Uri.BuildQueryString(codeVerifier & codeParameter & query),
             response = Web.Contents(
                 Uri.Combine(AUTH_BASE_URL, "token"),
                 [
-                    Content = Text.ToBinary(Uri.BuildQueryString(query)),
+                    Content = Text.ToBinary(queryString),
                     Headers = [
                         #"Content-Type" = "application/x-www-form-urlencoded",
-                        #"Accept" = "application/json",
-                        #"Authorization" = "Basic " & Binary.ToText(Text.ToBinary(APS_CLIENT_ID & ":" & APS_CLIENT_SECRET), BinaryEncoding.Base64)
+                        #"Accept" = "application/json"
                     ]
                 ]
-            )
+            ),
+            result = Json.Document(response)
         in
-            Json.Document(response)
+            if (result[error]? <> null) then
+                error Error.Record(result[error], result[message]?)
+            else
+                result,
+
+    RefreshToken = (dataSourcePath, refreshToken) => TokenMethod(refreshToken, "refresh_token")
 in
     [
         StartLogin = StartLogin,

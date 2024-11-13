@@ -11,7 +11,7 @@
     <MezContent Include="*.pqm" />
     <MezContent Include="icons\*.png" />
     <MezContent Include="resources.resx" />
-    <MezContent Include="secrets.json" />
+    <MezContent Include="config.json" />
   </ItemGroup>
   <Target Name="BuildMez" AfterTargets="Build" Inputs="@(MezContent)" Outputs="$(MezOutputPath)">
     <RemoveDir Directories="$(MezIntermediatePath)" />

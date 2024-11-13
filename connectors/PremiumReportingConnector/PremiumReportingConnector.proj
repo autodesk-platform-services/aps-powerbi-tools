@@ -8,10 +8,12 @@
   </PropertyGroup>
   <ItemGroup>
     <MezContent Include="PremiumReportingConnector.pq" />
-    <MezContent Include="*.pqm" />
-    <MezContent Include="icons\*.png" />
+    <MezContent Include="PremiumReporting.pqm" />
+    <MezContent Include="..\Shared\NavigationTable.pqm" />
+    <MezContent Include="..\Shared\OAuthPKCE.pqm" />
     <MezContent Include="resources.resx" />
     <MezContent Include="config.json" />
+    <MezContent Include="icons\*.png" />
   </ItemGroup>
   <Target Name="BuildMez" AfterTargets="Build" Inputs="@(MezContent)" Outputs="$(MezOutputPath)">
     <RemoveDir Directories="$(MezIntermediatePath)" />

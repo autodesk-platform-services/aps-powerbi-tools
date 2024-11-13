@@ -147,6 +147,6 @@ Extension.LoadFunction = (name as text) =>
 
 NavigationTable = Extension.LoadFunction("NavigationTable.pqm");
 NavigationTable.FromRecords = NavigationTable[FromRecords];
-OAuth = Extension.LoadFunction("OAuth.pqm");
+OAuth = Extension.LoadFunction("OAuthPKCE.pqm");
 DataManagement = Extension.LoadFunction("DataManagement.pqm");
 ModelDerivative = Extension.LoadFunction("ModelDerivative.pqm");

@@ -10,18 +10,17 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 
 ### Prerequisites
 
-- [APS app credentials](https://forge.autodesk.com/en/docs/oauth/v2/tutorials/create-app)
+- [APS application](https://aps.autodesk.com/en/docs/oauth/v2/tutorials/create-app) with [PKCE authentication](https://aps.autodesk.com/en/docs/oauth/v2/developers_guide/App-types/native/)
 - As per the [documentation](https://aps.autodesk.com/en/docs/insights/v1/tutorials/queries/), you must be a _Premium Team admin_
 - [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 
 ### Building
 
-- Create a _secrets.json_ file in the project folder, and populate it with your APS application client ID and secret:
+- Create a _config.json_ file in the project folder, and populate it with your APS application client ID:
 
 ```json
 {
-    "APS_CLIENT_ID": "<your client id>",
-    "APS_CLIENT_SECRET": "<your client secret>"
+    "APS_CLIENT_ID": "<your client id>"
 }
 ```
 
@@ -42,15 +41,13 @@ dotnet build
 - Copy the generated *.mez file from the _bin/AnyCPU/Debug_ subfolder into Power BI Desktop application as explained [here](https://learn.microsoft.com/en-us/power-bi/connect-data/desktop-connector-extensibility#custom-connectors)
 - When selecting data sources in Power BI Desktop, the custom connector will be available under _Other > APS Premium Reporting API Connector (Beta) (Custom)_
 
-> **IMPORTANT:** do not share the *.mez file with anyone as it includes the _secrets.json_ file with your APS application credentials.
-
 ### Testing (Visual Studio Code)
 
 - Make sure you have the [Power Query SDK](https://learn.microsoft.com/en-us/power-query/install-sdk) extension installed
 
 ![Set credential](./docs/set-credential.png)
 
-- Create new credentials by clicking the _Set credential_ option (you will be prompted to log in with your Autodesk credentials)
+- Create new credentials by clicking the _Set credential_ option (you will be prompted to log in with your Autodesk account)
 - Open the [PremiumReportingConnector.query.pq](./PremiumReportingConnector.query.pq) file
 - Run the test query by clicking the _Evaluate current file_ option
 

@@ -96,7 +96,7 @@ Extension.LoadFunction = (name as text) =>
 
 NavigationTable = Extension.LoadFunction("NavigationTable.pqm");
 NavigationTable.FromRecords = NavigationTable[FromRecords];
-OAuth = Extension.LoadFunction("OAuth.pqm");
+OAuth = Extension.LoadFunction("OAuthPKCE.pqm");
 TokenFlex = Extension.LoadFunction("TokenFlex.pqm");
 TokenFlex.GetContracts = TokenFlex[GetContracts];
 TokenFlex.RunUsageQuery = TokenFlex[RunUsageQuery];

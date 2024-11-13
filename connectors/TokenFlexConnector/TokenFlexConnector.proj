@@ -8,10 +8,12 @@
   </PropertyGroup>
   <ItemGroup>
     <MezContent Include="TokenFlexConnector.pq" />
-    <MezContent Include="*.pqm" />
-    <MezContent Include="icons\*.png" />
+    <MezContent Include="TokenFlex.pqm" />
+    <MezContent Include="..\Shared\NavigationTable.pqm" />
+    <MezContent Include="..\Shared\OAuthPKCE.pqm" />
     <MezContent Include="resources.resx" />
-    <MezContent Include="secrets.json" />
+    <MezContent Include="config.json" />
+    <MezContent Include="icons\*.png" />
   </ItemGroup>
   <Target Name="BuildMez" AfterTargets="Build" Inputs="@(MezContent)" Outputs="$(MezOutputPath)">
     <RemoveDir Directories="$(MezIntermediatePath)" />

@@ -4,13 +4,13 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 
 ## Usage
 
-[![Showcase](https://img.youtube.com/vi/doofk0rsL8U/0.jpg)](https://www.youtube.com/watch?v=doofk0rsL8U)
+See [Design Properties Connector Usage](https://github.com/autodesk-platform-services/aps-powerbi-tools/wiki/Design-Properties-Connector-Usage).
 
 ## Development
 
 ### Prerequisites
 
-- [APS application](https://aps.autodesk.com/en/docs/oauth/v2/tutorials/create-app) with [PKCE authentication](https://aps.autodesk.com/en/docs/oauth/v2/developers_guide/App-types/native/)
+- [APS application](https://aps.autodesk.com/en/docs/oauth/v2/tutorials/create-app) of type _Desktop, Mobile, Single-Page App_ (this project uses [PKCE authentication](https://aps.autodesk.com/en/docs/oauth/v2/developers_guide/App-types/native/))
 - [Provision access to ACC or BIM360](https://tutorials.autodesk.io/#provision-access-in-other-products)
 - [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 

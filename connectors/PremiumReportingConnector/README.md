@@ -4,13 +4,13 @@ Example [custom Power BI data connector](https://learn.microsoft.com/en-us/power
 
 ## Usage
 
-[![Showcase](https://img.youtube.com/vi/lVhLbYZpWIY/0.jpg)](https://www.youtube.com/watch?v=lVhLbYZpWIY)
+See [Premium Reporting API Connector Usage](https://github.com/autodesk-platform-services/aps-powerbi-tools/wiki/Premium-Reporting-API-Connector-Usage).
 
 ## Development
 
 ### Prerequisites
 
-- [APS application](https://aps.autodesk.com/en/docs/oauth/v2/tutorials/create-app) with [PKCE authentication](https://aps.autodesk.com/en/docs/oauth/v2/developers_guide/App-types/native/)
+- [APS application](https://aps.autodesk.com/en/docs/oauth/v2/tutorials/create-app) of type _Desktop, Mobile, Single-Page App_ (this project uses [PKCE authentication](https://aps.autodesk.com/en/docs/oauth/v2/developers_guide/App-types/native/))
 - As per the [documentation](https://aps.autodesk.com/en/docs/insights/v1/tutorials/queries/), you must be a _Premium Team admin_
 - [.NET 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
 

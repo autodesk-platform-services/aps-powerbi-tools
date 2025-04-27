@@ -4,17 +4,17 @@ import process from "node:process";
 import dotenv from "dotenv";
 import { getClientCredentialsAccessToken, createServiceAccount, createServiceAccountPrivateKey } from "../lib/auth.js";
 
-const NAME = process.argv[2];
 const { APS_CLIENT_ID, APS_CLIENT_SECRET } = dotenv.config().parsed;
-if (!NAME || !APS_CLIENT_ID || !APS_CLIENT_SECRET) {
+const [,, userName, firstName, lastName] = process.argv;
+if (!APS_CLIENT_ID || !APS_CLIENT_SECRET || !userName || !firstName || !lastName) {
     console.error("Usage:");
-    console.error("  APS_CLIENT_ID=<client-id> APS_CLIENT_SECRET=<client-secret> node create-service-account.js <name>");
+    console.error("  APS_CLIENT_ID=<client-id> APS_CLIENT_SECRET=<client-secret> node create-service-account.js <userName> <firstName> <lastName>");
     process.exit(1);
 }
 
 try {
     const credentials = await getClientCredentialsAccessToken(APS_CLIENT_ID, APS_CLIENT_SECRET, ["application:service_account:write", "application:service_account_key:write"]);
-    const { serviceAccountId, email } = await createServiceAccount(NAME, credentials.access_token);
+    const { serviceAccountId, email } = await createServiceAccount(userName, firstName, lastName, credentials.access_token);
     const { kid, privateKey } = await createServiceAccountPrivateKey(serviceAccountId, credentials.access_token);
     console.log("Service account created successfully!");
     console.log("Invite the following user to your project:", email);

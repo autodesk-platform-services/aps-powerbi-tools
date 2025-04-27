@@ -92,17 +92,19 @@ export async function getServiceAccountAccessToken(clientId, clientSecret, servi
  * Creates a new service account with the given name.
  *
  * @param {string} name - The name of the service account to create (must be between 5 and 64 characters long).
+ * @param {string} firstName - The first name of the service account user.
+ * @param {string} lastName - The last name of the service account user.
  * @param {string} accessToken - The access token for authentication.
  * @returns {Promise<{ serviceAccountId: string; email: string; }>} A promise that resolves to the created service account response.
  * @throws {Error} If the request to create the service account fails.
  */
-export async function createServiceAccount(name, accessToken) {
+export async function createServiceAccount(name, firstName, lastName, accessToken) {
     const headers = {
         "Accept": "application/json",
         "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json"
     };
-    const body = JSON.stringify({ name });
+    const body = JSON.stringify({ name, firstName, lastName });
     return _post("/authentication/v2/service-accounts", headers, body);
 }
 

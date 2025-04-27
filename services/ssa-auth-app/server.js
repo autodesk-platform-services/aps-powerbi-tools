@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
-import fastify from "fastify"
+import fastify from "fastify";
+import cors from "@fastify/cors";
 import { getServiceAccountAccessToken } from "./lib/auth.js";
 
 const { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_SA_ID, APS_SA_EMAIL, APS_SA_KEY_ID, APS_SA_PRIVATE_KEY, PORT } = dotenv.config().parsed;
@@ -31,6 +32,7 @@ const HTML = `
 `;
 
 const app = fastify({ logger: true });
+await app.register(cors, { origin: "*", methods: ["GET"] });
 app.get("/", (request, reply) => { reply.type("text/html").send(HTML); });
 app.get("/token", () => getServiceAccountAccessToken(APS_CLIENT_ID, APS_CLIENT_SECRET, APS_SA_ID, APS_SA_KEY_ID, APS_SA_PRIVATE_KEY, SCOPES));
 try {

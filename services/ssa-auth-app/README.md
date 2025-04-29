@@ -22,7 +22,7 @@ APS_CLIENT_ID="your client id"
 APS_CLIENT_SECRET="your client secret"
 ```
 
-4. Create a new service account (let's call it `test-account-1`): `npx create-service-account test-account-1`
+4. Create a new service account: `npx create-service-account <userName> <firstName> <lastName>`
     - This script will output an email of the newly created service account, and a bunch of environment variables
 5. Add the service account email as a new member to your ACC projects as needed
 6. Add or overwrite the new environment variables in your _.env_ file

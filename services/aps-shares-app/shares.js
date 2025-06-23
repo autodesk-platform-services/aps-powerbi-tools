@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const axios = require('axios').default;
 const { SdkManagerBuilder } = require('@aps_sdk/autodesk-sdkmanager');
 const { AuthenticationClient, Scopes } = require('@aps_sdk/authentication');
-const { OssClient, CreateBucketXAdsRegionEnum, CreateBucketsPayloadPolicyKeyEnum, CreateSignedResourceAccessEnum } = require('@aps_sdk/oss');
+const { OssClient, CreateBucketXAdsRegionEnum, CreateBucketsPayloadPolicyKeyEnum, Access } = require('@aps_sdk/oss');
 const { APS_CLIENT_ID, APS_CLIENT_SECRET , APS_BUCKET_KEY, SERVER_SESSION_SECRET } = require('./config.js');
 
 const sdkManager = SdkManagerBuilder.create().build();
@@ -21,13 +21,13 @@ async function getAccessToken() {
 async function ensureBucketExists(bucketKey) {
     const token = await getAccessToken();
     try {
-        await ossClient.getBucketDetails(token, bucketKey);
+        await ossClient.getBucketDetails(bucketKey, { accessToken: token });
     } catch (err) {
         if (err.axiosError.response.status === 404) {
-            await ossClient.createBucket(token, CreateBucketXAdsRegionEnum.Us, {
+            await ossClient.createBucket(CreateBucketXAdsRegionEnum.Us, {
                 bucketKey,
                 policyKey: CreateBucketsPayloadPolicyKeyEnum.Persistent
-            });
+            }, { accessToken: token });
         } else {
             throw err;
         }
@@ -38,7 +38,7 @@ async function listShares(ownerId) {
     await ensureBucketExists(APS_BUCKET_KEY);
     const token = await getAccessToken();
     try {
-        const { signedUrl } = await ossClient.createSignedResource(token, APS_BUCKET_KEY, ownerId, { access: CreateSignedResourceAccessEnum.Read });
+        const { signedUrl } = await ossClient.createSignedResource(APS_BUCKET_KEY, ownerId, { access: Access.Read, accessToken: token });
         const { data: shares } = await axios.get(signedUrl);
         return shares;
     } catch (err) {
@@ -54,7 +54,7 @@ async function updateShares(ownerId, func) {
     let shares = await listShares(ownerId);
     shares = func(shares);
     const token = await getAccessToken();
-    const { signedUrl } = await ossClient.createSignedResource(token, APS_BUCKET_KEY, ownerId, { access: CreateSignedResourceAccessEnum.Write });
+    const { signedUrl } = await ossClient.createSignedResource(APS_BUCKET_KEY, ownerId, { access: Access.Write, accessToken: token });
     const { data } = await axios.put(signedUrl, JSON.stringify(shares));
     return data;
 }

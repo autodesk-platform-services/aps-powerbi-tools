@@ -21,7 +21,7 @@ async function canAccessUrn(urn, credentials) {
             region = Region.Emea;
         }
         
-        await modelDerivativeClient.getManifest(credentials.access_token, urn, { region });
+        await modelDerivativeClient.getManifest(urn, { region, accessToken: credentials.access_token });
     } catch (err) {
         return false;
     }

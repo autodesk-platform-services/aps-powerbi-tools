@@ -72,12 +72,16 @@ async function deleteShare(ownerId, shareId) {
 }
 
 function encryptShareCode(ownerId, shareId) {
-    const cipher = crypto.createCipher('aes-128-ecb', SERVER_SESSION_SECRET, {});
+    let iv = crypto.randomBytes(0);
+    let key = crypto.createHash('sha256').update(String(SERVER_SESSION_SECRET)).digest('base64').substring(0, 16);
+    const cipher = crypto.createCipheriv('aes-128-ecb', key, iv);
     return cipher.update(`${ownerId}/${shareId}`, 'utf8', 'hex') + cipher.final('hex');
 }
 
 function decryptShareCode(code) {
-    const decipher = crypto.createDecipher('aes-128-ecb', SERVER_SESSION_SECRET);
+    let iv = crypto.randomBytes(0);
+    let key = crypto.createHash('sha256').update(String(SERVER_SESSION_SECRET)).digest('base64').substring(0, 16);
+    const decipher = crypto.createDecipheriv('aes-128-ecb', key, iv);
     const decrypted = decipher.update(code, 'hex', 'utf8') + decipher.final('utf8');
     if (!decrypted.match(/^[a-zA-Z0-9]+\/[0-9a-fA-F\-]+$/)) {
         throw new Error('Invalid share code.');

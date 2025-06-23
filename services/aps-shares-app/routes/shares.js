@@ -17,8 +17,10 @@ async function canAccessUrn(urn, credentials) {
         const urnBuffer = Buffer.from(urn, 'base64');
         const objectId = urnBuffer.toString('utf-8');
 
-        if (objectId?.toLowerCase().includes('emea')) {
+        if (objectId?.toLowerCase().includes('emea:')) {
             region = Region.Emea;
+        } else if (objectId?.toLowerCase().includes('anz:')) {
+            region = Region.Aus;
         }
         
         await modelDerivativeClient.getManifest(urn, { region, accessToken: credentials.access_token });
